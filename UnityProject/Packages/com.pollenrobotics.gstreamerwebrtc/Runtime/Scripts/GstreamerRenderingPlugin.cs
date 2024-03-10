@@ -70,8 +70,10 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
     public bool producer = false;
     public string remote_producer_name = "robot";
 
+    const uint width = 960;
+    const uint height = 720;
 
-    void Start()
+    IEnumerator Start()
     {
         string ip_address = "localhost"; //PlayerPrefs.GetString("ip_address");
         //string ip_address = "10.0.1.36";
@@ -91,13 +93,11 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
         CreateRenderTexture(false, ref rightTextureNativePtr, ref rightRawImage);
         _signalling.Connect();
 
-        //yield return StartCoroutine("CallPluginAtEndOfFrames");
+        yield return StartCoroutine("CallPluginAtEndOfFrames");
     }
 
     void CreateRenderTexture(bool left, ref IntPtr textureNativePtr, ref RawImage rawImage)
     {
-        uint width = 960;
-        uint height = 720;
         CreateTexture(width, height, left);
         textureNativePtr = GetTexturePtr(left);
 
@@ -137,16 +137,13 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
 
     private IEnumerator CallPluginAtEndOfFrames()
     {
+        while (true)
+        {
+            // Wait until all frame rendering is done
+            yield return new WaitForEndOfFrame();
 
-        // Wait until all frame rendering is done
-        //yield return new WaitForEndOfFrame();
-
-        GL.IssuePluginEvent(GetRenderEventFunc(), 1);
-        yield return new WaitForEndOfFrame();
-        CreateRenderTexture(true, ref leftTextureNativePtr, ref leftRawImage);
-        CreateRenderTexture(false, ref rightTextureNativePtr, ref rightRawImage);
-        _signalling.Connect();
-
+            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+        }
     }
 
 }

@@ -6,8 +6,9 @@
 #include <dxgiformat.h>
 #include <d3d11_1.h>
 
-#include "Unity/IUnityGraphicsD3D11.h"
 
+#include "Unity/IUnityGraphicsD3D11.h"
+using namespace Microsoft::WRL;
 
 
 static gboolean bus_call(GstBus* bus, GstMessage* msg, gpointer data)
@@ -58,6 +59,12 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
 	auto device = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice();
 	HRESULT hr = S_OK;
 
+	gst_video_info_set_format(&render_info_, GST_VIDEO_FORMAT_RGBA, width, height);
+
+	std::unique_ptr<AppData> data = std::make_unique<AppData>();
+	data->avpipeline = this;
+	data->left = left;
+
 	// Create a texture 2D that can be shared
 	D3D11_TEXTURE2D_DESC desc = {};
 	desc.Width = width;
@@ -66,74 +73,144 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-	desc.CPUAccessFlags = 0;
-	desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+	desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
 
-	// Create the texture using the device and description
-	if(left)
-		hr = device->CreateTexture2D(&desc, nullptr, &_texture_left);
-	else
-		hr = device->CreateTexture2D(&desc, nullptr, &_texture_right);
-	if (FAILED(hr)) {
-		Debug::Log("Could not create texture.");
-		return false;
-	}
+	hr = device->CreateTexture2D(&desc, nullptr, &data->texture);
+	g_assert(SUCCEEDED(hr));
 
-	// Cast the pointer into IDXGIRes. that can be shared.
-	IDXGIResource* pDXGITexture = nullptr;
+	hr = data->texture.As(&data->keyed_mutex_);
+	g_assert(SUCCEEDED(hr));
+
+	hr = data->keyed_mutex_->AcquireSync(0, INFINITE);
+	g_assert(SUCCEEDED(hr));
+
+
+	ComPtr<IDXGIResource1> dxgi_resource;
+	hr = data->texture.As(&dxgi_resource);
+	g_assert(SUCCEEDED(hr));
+
+	HANDLE shared_handle = nullptr;
+	hr = dxgi_resource->CreateSharedHandle(nullptr,
+		DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, nullptr,
+		&shared_handle);
+	g_assert(SUCCEEDED(hr));
+
+	auto gst_device = gst_d3d11_device_get_device_handle(device_);
+	ComPtr<ID3D11Device1> device1;
+	hr = gst_device->QueryInterface(IID_PPV_ARGS(&device1));
+	g_assert(SUCCEEDED(hr));
+
+	/* Open shared texture at GStreamer device side */
+	ComPtr<ID3D11Texture2D> gst_texture;
+	hr = device1->OpenSharedResource1(shared_handle,
+		IID_PPV_ARGS(&gst_texture));
+	g_assert(SUCCEEDED(hr));
+	/* Can close NT handle now */
+	CloseHandle(shared_handle);
+
+	/* Wrap shared texture with GstD3D11Memory in order to convert texture
+ * using converter API */
+	GstMemory* mem = gst_d3d11_allocator_alloc_wrapped(nullptr, device_,
+		gst_texture.Get(),
+		/* CPU accessible (staging texture) memory size is unknown.
+		* Pass zero here, then GStreamer will calculate it */
+		0, nullptr, nullptr);
+	g_assert(mem);
+
+	data->shared_buffer_ = gst_buffer_new();
+	gst_buffer_append_memory(data->shared_buffer_, mem);
+
 	if (left)
-		hr = _texture_left->QueryInterface(__uuidof(IDXGIResource), (void**)&pDXGITexture);
+		_leftData = std::move(data);
 	else
-		hr = _texture_right->QueryInterface(__uuidof(IDXGIResource), (void**)&pDXGITexture);
-
-	if (FAILED(hr)) {
-		Debug::Log("Couldnt DXGI res");
-		return false;
-	}
-
-	// Create a shared handle (so the GStreamer thread can write to this)
-	HANDLE sharedHandle = nullptr;
-	hr = pDXGITexture->GetSharedHandle(&sharedHandle);
-	if (FAILED(hr)) {
-		Debug::Log("Couldnt create shared handle");
-		pDXGITexture->Release();
-		return false;
-	}
-	if (left)
-	{
-		_sharedHandle_left = sharedHandle;
-		Debug::Log("Created left texture for pipeline:");
-	}
-	else
-	{
-		_sharedHandle_right = sharedHandle;
-		Debug::Log("Created right texture for pipeline:");
-	}
-
+		_rightData = std::move(data);
 
 	return true;
 }
 
-
-
-// Callback from GStreamer when it's ready to draw on our shared ID3D11Texture.
-GstFlowReturn GstAVPipeline::OnBeginDraw(GstElement* videosink, gpointer data)
+GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data)
 {
-	//GstAVPipeline* pipeline = static_cast<GstAVPipeline*>(data);
-	//HANDLE sharedHandle = pipeline->GetSharedHandle();
-	HANDLE sharedHandle = static_cast<HANDLE>(data);
+	AppData* data = static_cast<AppData*>(user_data);
+	GstSample* sample = gst_app_sink_pull_sample(appsink);
 
-	if (sharedHandle == nullptr) {
-		return GST_FLOW_OK;
+	if (!sample)
+		return GST_FLOW_ERROR;
+
+	GstCaps* caps = gst_sample_get_caps(sample);
+	if (!caps) {
+		gst_sample_unref(sample);
+		Debug::Log("Sample without caps", Level::Error);
+		return GST_FLOW_ERROR;
 	}
 
-	// GStreamer draws on our texture (assumed same size)
-	g_signal_emit_by_name(videosink, "draw", (gpointer)sharedHandle, D3D11_RESOURCE_MISC_SHARED, 0, 0, nullptr);
+	std::lock_guard<std::mutex> lk(data->lock_);
+	/* Caps updated, recreate converter */
+	if (data->last_caps_ && !gst_caps_is_equal(data->last_caps_, caps))
+		gst_clear_object(&data->conv_);
+
+	if (!data->conv_) {
+		GstVideoInfo in_info;
+		gst_video_info_from_caps(&in_info, caps);
+
+		/* In case of shared texture, video processor might not behave as expected.
+		 * Use only pixel shader */
+		auto config = gst_structure_new("converter-config",
+			GST_D3D11_CONVERTER_OPT_BACKEND, GST_TYPE_D3D11_CONVERTER_BACKEND,
+			GST_D3D11_CONVERTER_BACKEND_SHADER, nullptr);
+
+		data->conv_ = gst_d3d11_converter_new(data->avpipeline->device_, &in_info,
+			&data->avpipeline->render_info_, config);
+	}
+
+	gst_caps_replace(&data->last_caps_, caps);
+	gst_clear_sample(&data->last_sample_);
+	data->last_sample_ = sample;
 
 	return GST_FLOW_OK;
+}
+
+void GstAVPipeline::draw(bool left)
+{
+	Debug::Log("drawing");
+	AppData* data;
+	if (left)
+		data = _leftData.get();
+	else
+		data = _rightData.get();
+
+	if (data == nullptr)
+	{
+		Debug::Log("data is null", Level::Warning);
+		return;
+	}
+
+	GstSample* sample = nullptr;
+
+	/* Steal sample pointer */
+	{
+		std::lock_guard <std::mutex> lk(data->lock_);
+		/* If there's no updated sample, don't need to render again */
+		if (!data->last_sample_)
+			return;
+
+		sample = data->last_sample_;
+		data->last_sample_ = nullptr;
+	}
+
+	auto buf = gst_sample_get_buffer(sample);
+	if (!buf) {
+		Debug::Log("Sample without buffer", Level::Error);
+		gst_sample_unref(sample);
+		return;
+	}
+
+	data->keyed_mutex_->ReleaseSync(0);
+	/* Converter will take gst_d3d11_device_lock() and acquire sync */
+	gst_d3d11_converter_convert_buffer(data->conv_, buf, data->shared_buffer_);
+
+	data->keyed_mutex_->AcquireSync(0, INFINITE);
 }
 
 void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) {
@@ -145,32 +222,37 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		GstElement* rtph264depay = gst_element_factory_make("rtph264depay", NULL);
 		GstElement* h264parse = gst_element_factory_make("h264parse", NULL);
 		GstElement* d3d11h264dec = gst_element_factory_make("d3d11h264dec", NULL);
-		GstElement* d3d11convert = gst_element_factory_make("d3d11convert", NULL);
-		GstElement* d3d11videosink = gst_element_factory_make("d3d11videosink", NULL);
+		GstElement* d3d11upload = gst_element_factory_make("d3d11upload", NULL);
+		GstElement* appsink = gst_element_factory_make("appsink", NULL);
 
-		if (!avpipeline || !src || !rtph264depay || !h264parse || !d3d11h264dec || !d3d11convert  || !d3d11videosink) {
+		if (!avpipeline || !src || !rtph264depay || !h264parse || !d3d11h264dec || !d3d11upload  || !appsink) {
 			Debug::Log("Failed to create all elements");
 		}
 
-		g_object_set(d3d11videosink, "draw-on-shared-texture", true, NULL);
+		//g_object_set(d3d11videosink, "draw-on-shared-texture", true, NULL);
+		GstCaps* caps = gst_caps_from_string("video/x-raw(memory:D3D11Memory)");
+		g_object_set(appsink, "caps", caps, nullptr);
+		gst_caps_unref(caps);
 
-		gst_bin_add_many(GST_BIN(avpipeline->GetPipeline()), rtph264depay, h264parse, d3d11h264dec, d3d11convert, d3d11videosink, NULL);
+		gst_bin_add_many(GST_BIN(avpipeline->GetPipeline()), rtph264depay, h264parse, d3d11h264dec, d3d11upload, appsink, NULL);
 
+		GstAppSinkCallbacks callbacks = { nullptr };
+		callbacks.new_sample = on_new_sample;
 		
 		if (g_str_has_prefix(pad_name, "video_0"))
 		{
 			Debug::Log("Connecting left video pad " + std::string(pad_name));
-			g_signal_connect(d3d11videosink, "begin_draw", G_CALLBACK(OnBeginDraw), avpipeline->GetSharedHandle(true));
+			gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, avpipeline->_leftData.get(), nullptr);
 		}
 		else
 		{
 			Debug::Log("Connecting right video pad " + std::string(pad_name));
-			g_signal_connect(d3d11videosink, "begin_draw", G_CALLBACK(OnBeginDraw), avpipeline->GetSharedHandle(false));
+			gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, avpipeline->_rightData.get(), nullptr);
 			
 		}
 
-		if (!gst_element_link_many(rtph264depay, h264parse, d3d11h264dec, d3d11convert, d3d11videosink, NULL)) {
-			Debug::Log("Elements could not be linked. Exiting.");
+		if (!gst_element_link_many(rtph264depay, h264parse, d3d11h264dec, d3d11upload, appsink, NULL)) {
+			Debug::Log("Elements could not be linked.");
 		}
 
 		GstPad* sinkpad = gst_element_get_static_pad(rtph264depay, "sink");
@@ -180,8 +262,14 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		gst_element_sync_state_with_parent(rtph264depay);
 		gst_element_sync_state_with_parent(h264parse);
 		gst_element_sync_state_with_parent(d3d11h264dec);
-		gst_element_sync_state_with_parent(d3d11convert);
-		gst_element_sync_state_with_parent(d3d11videosink);
+		gst_element_sync_state_with_parent(d3d11upload);
+		gst_element_sync_state_with_parent(appsink);
+
+		gst_object_unref(rtph264depay);
+		gst_object_unref(h264parse);
+		gst_object_unref(d3d11h264dec);
+		gst_object_unref(d3d11upload);
+		gst_object_unref(appsink);
 	}
 	else if (g_str_has_prefix(pad_name, "audio")) {
 		Debug::Log("Adding audio pad " + std::string(pad_name));
@@ -213,11 +301,15 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 				gst_element_sync_state_with_parent(autoaudiosink);
 			}
 		}
+		gst_object_unref(rtpopusdepay);
+		gst_object_unref(opusdec);
+		gst_object_unref(audioconvert);
+		gst_object_unref(audioresample);
+		gst_object_unref(autoaudiosink);
 	}
 	g_free(pad_name);
 }
 
-// Call only on plugin thread
 void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture) {
 	if (texture != nullptr)
 	{
@@ -226,22 +318,47 @@ void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture) {
 	}
 }
 
-/*void GstAVPipeline::SetTextureFromUnity(void* texture, unsigned int width, unsigned int height)
-{
-	Debug::Log("Set texture for pipeline");
-	_texture = (ID3D11Texture2D *) texture;
-	textureWidth = width;
-	textureHeight = height;
-}*/
-
-
 
 GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInterfaces(s_UnityInterfaces)
 {
+	/* Find adapter LUID of render device, then create our device with the same
+ * adapter */
+	ComPtr<IDXGIDevice> dxgi_device;
+	auto hr = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice()->QueryInterface(IID_PPV_ARGS(&dxgi_device));
+	g_assert(SUCCEEDED(hr));
+
+	ComPtr<IDXGIAdapter> adapter;
+	hr = dxgi_device->GetAdapter(&adapter);
+	g_assert(SUCCEEDED(hr));
+
+	DXGI_ADAPTER_DESC adapter_desc;
+	hr = adapter->GetDesc(&adapter_desc);
+	g_assert(SUCCEEDED(hr));
+
+	auto luid = gst_d3d11_luid_to_int64(&adapter_desc.AdapterLuid);
+
+	/* This device will be used by our pipeline */
+	device_ = gst_d3d11_device_new_for_adapter_luid(luid,
+		D3D11_CREATE_DEVICE_BGRA_SUPPORT);
+	g_assert(device_);
 }
 
 GstAVPipeline::~GstAVPipeline()
 {
+	if (_leftData != nullptr)
+	{
+		gst_clear_sample(&_leftData->last_sample_);
+		gst_clear_buffer(&_leftData->shared_buffer_);
+		_leftData.reset(nullptr);
+	}
+	if (_rightData != nullptr)
+	{
+		gst_clear_sample(&_rightData->last_sample_);
+		gst_clear_buffer(&_rightData->shared_buffer_);
+		_rightData.reset(nullptr);
+	}
+	gst_clear_object(&_pipeline);
+	gst_clear_object(&device_);
 }
 
 void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
@@ -249,16 +366,16 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 	Debug::Log("GstAVPipeline create pipeline", Level::Info);
 	Debug::Log(uri, Level::Info);
 	Debug::Log(remote_peer_id, Level::Info);
+
+
 	_pipeline = gst_pipeline_new("Plugin AV Pipeline");
 
 	_bus = gst_pipeline_get_bus(GST_PIPELINE(_pipeline));
 	_busWatchId = gst_bus_add_watch(_bus, bus_call, nullptr);
 	gst_object_unref(_bus);
 
-	//GstElement* videotestsrc = gst_element_factory_make("videotestsrc", NULL);
 	GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", NULL);
-	//d3d11videosink = gst_element_factory_make("d3d11videosink", NULL);
-	if (!_pipeline || !webrtcsrc /* || !d3d11videosink*/) {
+	if (!_pipeline || !webrtcsrc) {
 		Debug::Log("Failed to create all elements", Level::Error);
 		gst_object_unref(_pipeline);
 		_pipeline = nullptr;
@@ -280,16 +397,9 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
 	g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), this);
 
-	//g_object_set(G_OBJECT(d3d11videosink), "draw-on-shared-texture", true, NULL);
-	/*g_signal_connect(G_OBJECT(d3d11videosink), "begin_draw", G_CALLBACK(OnBeginDraw), this);*/
 
-	gst_bin_add_many(GST_BIN(_pipeline), webrtcsrc/*, d3d11videosink*/, NULL);
-	/*if (!gst_element_link_many(webrtcsrc, d3d11videosink, NULL)) {
-		Debug::Log("Elements could not be linked.", Level::Error);
-		gst_object_unref(pipeline);
-		pipeline = nullptr;
-		return;
-	}*/
+	gst_bin_add_many(GST_BIN(_pipeline), webrtcsrc, NULL);
+
 
 	auto state = gst_element_set_state(_pipeline, GstState::GST_STATE_PLAYING);
 	if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE) {
@@ -328,19 +438,12 @@ void GstAVPipeline::DestroyPipeline()
 	}
 }
 
-HANDLE GstAVPipeline::GetSharedHandle(bool left) {
-	if (left)
-		return _sharedHandle_left;
-	else
-		return _sharedHandle_right;
-}
-
 
 ID3D11Texture2D* GstAVPipeline::GetTexturePtr(bool left) {
 	if (left)
-		return _texture_left;
+		return _leftData->texture.Get();
 	else
-		return _texture_right;
+		return _rightData->texture.Get();
 }
 
 GstElement* GstAVPipeline::GetPipeline()
