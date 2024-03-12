@@ -108,7 +108,6 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
 
 	std::unique_ptr<AppData> data = std::make_unique<AppData>();
 	data->avpipeline = this;
-	data->left = left;
 
 	// Create a texture 2D that can be shared
 	D3D11_TEXTURE2D_DESC desc = {};
@@ -145,6 +144,7 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
 	ComPtr<ID3D11Device1> device1;
 	hr = gst_device->QueryInterface(IID_PPV_ARGS(&device1));
 	g_assert(SUCCEEDED(hr));
+	
 
 	/* Open shared texture at GStreamer device side */
 	ComPtr<ID3D11Texture2D> gst_texture;
@@ -416,8 +416,8 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 
 GstAVPipeline::~GstAVPipeline()
 {
-	//g_main_loop_unref(main_loop_);
-	//g_main_context_unref(main_context_);
+	g_main_loop_unref(main_loop_);
+	g_main_context_unref(main_context_);
 	gst_clear_object(&_device);
 }
 

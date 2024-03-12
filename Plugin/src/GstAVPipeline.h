@@ -22,7 +22,6 @@ private:
 	struct AppData
 	{
 		GstAVPipeline* avpipeline = nullptr;
-		bool left;
 		GstCaps* last_caps = nullptr;
 		GstD3D11Converter* conv = nullptr;
 		GstSample* last_sample = nullptr;
