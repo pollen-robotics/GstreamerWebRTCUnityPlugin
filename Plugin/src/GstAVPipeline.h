@@ -24,7 +24,7 @@ private:
 		GstAVPipeline* avpipeline = nullptr;
 		bool left;
 		GstCaps* last_caps = nullptr;
-		GstD3D11Converter* conv_ = nullptr;
+		GstD3D11Converter* conv = nullptr;
 		GstSample* last_sample = nullptr;
 		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture = nullptr;
 		Microsoft::WRL::ComPtr<IDXGIKeyedMutex> keyed_mutex = nullptr;

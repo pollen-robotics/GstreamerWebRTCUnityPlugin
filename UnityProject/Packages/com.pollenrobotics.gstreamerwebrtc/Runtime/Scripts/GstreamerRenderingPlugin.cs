@@ -134,12 +134,12 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
         DestroyPipeline();
         if (leftTextureNativePtr != IntPtr.Zero)
         {
-            //ReleaseTexture(leftTextureNativePtr);
+            ReleaseTexture(leftTextureNativePtr);
             leftTextureNativePtr = IntPtr.Zero;
         }
         if (rightTextureNativePtr != IntPtr.Zero)
         {
-            //ReleaseTexture(rightTextureNativePtr);
+            ReleaseTexture(rightTextureNativePtr);
             rightTextureNativePtr = IntPtr.Zero;
         }
         //_command.Dispose();
@@ -163,15 +163,16 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
 
     void Update()
     {
-        /*Debug.LogWarning("update" + _command);
-        if (leftTextureNativePtr != IntPtr.Zero)
-        {
-            // Request texture update via the command buffer.
-            _command.IssuePluginCustomTextureUpdateV2(
-                GetTextureUpdateCallback(), null, 0);
-            Graphics.ExecuteCommandBuffer(_command);
-            _command.Clear();
-        }*/
+        //Debug.LogWarning("update" + _command);
+        /* if (leftTextureNativePtr != IntPtr.Zero)
+         {
+             // Request texture update via the command buffer.
+             _command.IssuePluginCustomTextureUpdateV2(
+                 GetTextureUpdateCallback(), null, 0);
+             Graphics.ExecuteCommandBuffer(_command);
+             _command.Clear();
+         }*/
+
         CommandBuffer _command = new CommandBuffer();
         _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
         _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), rightRawImage.texture, 1);

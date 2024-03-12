@@ -192,9 +192,9 @@ GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_da
 	std::lock_guard<std::mutex> lk(data->lock);
 	/* Caps updated, recreate converter */
 	if (data->last_caps && !gst_caps_is_equal(data->last_caps, caps))
-		gst_clear_object(&data->conv_);
+		gst_clear_object(&data->conv);
 
-	if (!data->conv_) {
+	if (!data->conv) {
 		GstVideoInfo in_info;
 		gst_video_info_from_caps(&in_info, caps);
 
@@ -204,7 +204,7 @@ GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_da
 			GST_D3D11_CONVERTER_OPT_BACKEND, GST_TYPE_D3D11_CONVERTER_BACKEND,
 			GST_D3D11_CONVERTER_BACKEND_SHADER, nullptr);
 
-		data->conv_ = gst_d3d11_converter_new(data->avpipeline->_device, &in_info,
+		data->conv = gst_d3d11_converter_new(data->avpipeline->_device, &in_info,
 			&data->avpipeline->_render_info, config);
 	}
 
@@ -252,7 +252,7 @@ void GstAVPipeline::Draw(bool left)
 
 	data->keyed_mutex->ReleaseSync(0);
 	/* Converter will take gst_d3d11_device_lock() and acquire sync */
-	gst_d3d11_converter_convert_buffer(data->conv_, buf, data->shared_buffer);
+	gst_d3d11_converter_convert_buffer(data->conv, buf, data->shared_buffer);
 
 	data->keyed_mutex->AcquireSync(0, INFINITE);
 }
@@ -492,12 +492,14 @@ void GstAVPipeline::DestroyPipeline()
 	{
 		gst_clear_sample(&_leftData->last_sample);
 		gst_clear_buffer(&_leftData->shared_buffer);
+		gst_clear_object(&_leftData->conv);
 		_leftData.reset(nullptr);
 	}
 	if (_rightData != nullptr)
 	{
 		gst_clear_sample(&_rightData->last_sample);
 		gst_clear_buffer(&_rightData->shared_buffer);
+		gst_clear_object(&_rightData->conv);
 		_rightData.reset(nullptr);
 	}
 }
