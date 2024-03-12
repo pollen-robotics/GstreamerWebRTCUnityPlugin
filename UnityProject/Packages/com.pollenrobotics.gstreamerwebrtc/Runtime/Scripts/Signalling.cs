@@ -80,13 +80,11 @@ public class Signalling
 
         webSocket.OnOpen += () =>
         {
-            Debug.Log("onopen");
             if (producer)
                 SendMessage(MessageType.SetPeerStatus, MessageRole.Producer);
             else
             {
                 SendMessage(MessageType.SetPeerStatus, MessageRole.Listener);
-                Debug.Log("tsts");
             }
         };
         webSocket.OnMessage += (bytes) =>

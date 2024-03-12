@@ -15,26 +15,15 @@ add_definitions(${GST_CFLAGS_OTHER})
 
 set(SOURCE_FILES
     src/RenderingPlugin.cpp
-	src/RenderAPI.cpp
-	src/RenderAPI_D3D11.cpp
-	src/RenderAPI_D3D12.cpp
-	src/RenderAPI_Vulkan.cpp
-	src/RenderAPI_Metal.mm
-	src/RenderAPI_OpenGLCoreES.cpp
-	src/RenderAPI.h
-	src/PlatformBase.h
 	src/DebugLog.cpp
 	src/DebugLog.h
 	src/GstAVPipeline.cpp
 	src/GstAVPipeline.h
 	
 	src/Unity/IUnityGraphics.h
-	src/Unity/IUnityGraphicsD3D9.h
 	src/Unity/IUnityGraphicsD3D11.h
-	src/Unity/IUnityGraphicsD3D12.h
-	src/Unity/IUnityGraphicsMetal.h
-	src/Unity/IUnityGraphicsVulkan.h
 	src/Unity/IUnityInterface.h
+	src/Unity/IUnityRenderingExtensions.h
 	
 	src/gl3w/gl3w.c
 	src/gl3w/gl3w.h

@@ -55,6 +55,12 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
 #endif
     private static extern IntPtr GetRenderEventFunc();
 
+#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
+    [DllImport("__Internal")]
+#else
+    [DllImport("UnityGStreamerPlugin")]
+#endif
+    private static extern System.IntPtr GetTextureUpdateCallback();
 
     private IntPtr leftTextureNativePtr;
 
@@ -73,7 +79,9 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
     const uint width = 960;
     const uint height = 720;
 
-    IEnumerator Start()
+    //CommandBuffer _command = null;
+
+    void Start()
     {
         string ip_address = "localhost"; //PlayerPrefs.GetString("ip_address");
         //string ip_address = "10.0.1.36";
@@ -93,7 +101,7 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
         CreateRenderTexture(false, ref rightTextureNativePtr, ref rightRawImage);
         _signalling.Connect();
 
-        yield return StartCoroutine("CallPluginAtEndOfFrames");
+        //yield return StartCoroutine("CallPluginAtEndOfFrames");
     }
 
     void CreateRenderTexture(bool left, ref IntPtr textureNativePtr, ref RawImage rawImage)
@@ -121,18 +129,20 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
 
     void OnDisable()
     {
+        //_command = null;
         _signalling.Close();
         DestroyPipeline();
         if (leftTextureNativePtr != IntPtr.Zero)
         {
-            ReleaseTexture(leftTextureNativePtr);
+            //ReleaseTexture(leftTextureNativePtr);
             leftTextureNativePtr = IntPtr.Zero;
         }
         if (rightTextureNativePtr != IntPtr.Zero)
         {
-            ReleaseTexture(rightTextureNativePtr);
+            //ReleaseTexture(rightTextureNativePtr);
             rightTextureNativePtr = IntPtr.Zero;
         }
+        //_command.Dispose();
     }
 
     private IEnumerator CallPluginAtEndOfFrames()
@@ -142,8 +152,31 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
             // Wait until all frame rendering is done
             yield return new WaitForEndOfFrame();
 
-            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+            //GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+            CommandBuffer _command = new CommandBuffer();
+            _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
+            //_command.IssuePluginEvent(GetRenderEventFunc(), 1);
+            Graphics.ExecuteCommandBuffer(_command);
+            //_command.Clear();
         }
+    }
+
+    void Update()
+    {
+        /*Debug.LogWarning("update" + _command);
+        if (leftTextureNativePtr != IntPtr.Zero)
+        {
+            // Request texture update via the command buffer.
+            _command.IssuePluginCustomTextureUpdateV2(
+                GetTextureUpdateCallback(), null, 0);
+            Graphics.ExecuteCommandBuffer(_command);
+            _command.Clear();
+        }*/
+        CommandBuffer _command = new CommandBuffer();
+        _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
+        _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), rightRawImage.texture, 1);
+        //_command.IssuePluginEvent(GetRenderEventFunc(), 1);
+        Graphics.ExecuteCommandBuffer(_command);
     }
 
 }

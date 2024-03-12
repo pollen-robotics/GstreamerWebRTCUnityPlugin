@@ -10,24 +10,26 @@
 class GstAVPipeline {
 
 private:
+	GMainLoop* main_loop_ = nullptr;
+	GMainContext* main_context_ = nullptr;
 	GstElement* _pipeline = nullptr;
 	GstBus* _bus = nullptr;
-	unsigned int _busWatchId = 0;
+	//unsigned int _busWatchId = 0;
 	IUnityInterfaces* _s_UnityInterfaces = nullptr;
-	GThread* pipelineLoopThread;	
-	GstD3D11Device* device_ = nullptr;
-	GstVideoInfo render_info_;	
+	GThread* _thread;	
+	GstD3D11Device* _device = nullptr;
+	GstVideoInfo _render_info;	
 	struct AppData
 	{
 		GstAVPipeline* avpipeline = nullptr;
 		bool left;
-		GstCaps* last_caps_ = nullptr;
+		GstCaps* last_caps = nullptr;
 		GstD3D11Converter* conv_ = nullptr;
-		GstSample* last_sample_ = nullptr;
-		Microsoft::WRL::ComPtr < ID3D11Texture2D> texture = nullptr;
-		Microsoft::WRL::ComPtr<IDXGIKeyedMutex> keyed_mutex_ = nullptr;
-		GstBuffer* shared_buffer_ = nullptr;
-		std::mutex lock_;
+		GstSample* last_sample = nullptr;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture = nullptr;
+		Microsoft::WRL::ComPtr<IDXGIKeyedMutex> keyed_mutex = nullptr;
+		GstBuffer* shared_buffer = nullptr;
+		std::mutex lock;
 	};
 
 	std::unique_ptr<AppData> _leftData = nullptr;
@@ -38,8 +40,8 @@ public:
 	~GstAVPipeline();
 
 	ID3D11Texture2D* GetTexturePtr(bool left = true);
-	GstElement* GetPipeline();
-	void draw(bool left);
+	void Draw(bool left);
+	void EndDraw(bool left);
 
 	void CreatePipeline(const char* uri, const char* remote_peer_id);
 	void DestroyPipeline();
@@ -50,6 +52,7 @@ public:
 	static void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data);
 
 	static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
-
-	GMainLoop* mainLoop;
+	static GstBusSyncReply GstAVPipeline::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
+	static gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
+	static gpointer loopFunc(gpointer user_data);
 };
