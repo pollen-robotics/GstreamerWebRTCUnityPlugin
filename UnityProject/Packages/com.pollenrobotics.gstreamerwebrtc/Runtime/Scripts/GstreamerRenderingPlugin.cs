@@ -81,10 +81,10 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
 
     //CommandBuffer _command = null;
 
-    void Start()
+    IEnumerator Start()
     {
-        string ip_address = "localhost"; //PlayerPrefs.GetString("ip_address");
-        //string ip_address = "10.0.1.36";
+        //string ip_address = "localhost"; //PlayerPrefs.GetString("ip_address");
+        string ip_address = "10.0.1.36";
         // string ip_address="0.0.0.0";
         //string ip_address = "192.168.1.108";
         _signallingServerURL = "ws://" + ip_address + ":8443";
@@ -101,7 +101,7 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
         CreateRenderTexture(false, ref rightTextureNativePtr, ref rightRawImage);
         _signalling.Connect();
 
-        //yield return StartCoroutine("CallPluginAtEndOfFrames");
+        yield return StartCoroutine("CallPluginAtEndOfFrames");
     }
 
     void CreateRenderTexture(bool left, ref IntPtr textureNativePtr, ref RawImage rawImage)
@@ -147,17 +147,19 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
 
     private IEnumerator CallPluginAtEndOfFrames()
     {
+        CommandBuffer _command = new CommandBuffer();
         while (true)
         {
             // Wait until all frame rendering is done
             yield return new WaitForEndOfFrame();
 
             //GL.IssuePluginEvent(GetRenderEventFunc(), 1);
-            CommandBuffer _command = new CommandBuffer();
-            _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
-            //_command.IssuePluginEvent(GetRenderEventFunc(), 1);
+
+            //_command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
+            //_command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), rightRawImage.texture, 1);
+            _command.IssuePluginEvent(GetRenderEventFunc(), 1);
             Graphics.ExecuteCommandBuffer(_command);
-            //_command.Clear();
+            _command.Clear();
         }
     }
 
@@ -173,11 +175,11 @@ public class GstreamerUnityGStreamerPlugin : MonoBehaviour
              _command.Clear();
          }*/
 
-        CommandBuffer _command = new CommandBuffer();
+        /*CommandBuffer _command = new CommandBuffer();
         _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
         _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), rightRawImage.texture, 1);
         //_command.IssuePluginEvent(GetRenderEventFunc(), 1);
-        Graphics.ExecuteCommandBuffer(_command);
+        Graphics.ExecuteCommandBuffer(_command);*/
     }
 
 }

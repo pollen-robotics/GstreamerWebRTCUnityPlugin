@@ -1,16 +1,12 @@
 // Example low level rendering Unity plugin
 
+#include "PlatformBase.h"
+#include "RenderAPI.h"
 
 #include <assert.h>
-#include <d3d11.h>
-
-#include "Unity/IUnityGraphics.h"
-#include "Unity/IUnityGraphicsD3D11.h"
-
 
 #include "GstAVPipeline.h"
-#include "DebugLog.h"
-#include "Unity/IUnityRenderingExtensions.h"
+
 
 
 static std::unique_ptr<GstAVPipeline> gstAVPipeline = nullptr;
@@ -40,13 +36,19 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline()
 	gstAVPipeline->DestroyPipeline();
 }
 
+/*
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTexture(void* textureHandle, int w, int h)
+{
+	gstAVPipeline->SetTextureFromUnity(textureHandle, w, h);
+}*/
+
 // --------------------------------------------------------------------------
 // UnitySetInterfaces
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 
-static IUnityInterfaces* s_UnityInterfaces = nullptr;
-static IUnityGraphics* s_Graphics = nullptr;
+static IUnityInterfaces* s_UnityInterfaces = NULL;
+static IUnityGraphics* s_Graphics = NULL;
 
 extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
@@ -54,6 +56,14 @@ extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 	s_Graphics = s_UnityInterfaces->Get<IUnityGraphics>();
 	s_Graphics->RegisterDeviceEventCallback(OnGraphicsDeviceEvent);
 	
+#if SUPPORT_VULKAN
+	if (s_Graphics->GetRenderer() == kUnityGfxRendererNull)
+	{
+		extern void RenderAPI_Vulkan_OnPluginLoad(IUnityInterfaces*);
+		RenderAPI_Vulkan_OnPluginLoad(unityInterfaces);
+	}
+#endif // SUPPORT_VULKAN
+
 	// Run OnGraphicsDeviceEvent(initialize) manually on plugin load
 	OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 
@@ -70,21 +80,32 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 	s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
 }
 
+#if UNITY_WEBGL
+typedef void	(UNITY_INTERFACE_API * PluginLoadFunc)(IUnityInterfaces* unityInterfaces);
+typedef void	(UNITY_INTERFACE_API * PluginUnloadFunc)();
+
+extern "C" void	UnityRegisterRenderingPlugin(PluginLoadFunc loadPlugin, PluginUnloadFunc unloadPlugin);
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RegisterPlugin()
+{
+	UnityRegisterRenderingPlugin(UnityPluginLoad, UnityPluginUnload);
+}
+#endif
 
 // --------------------------------------------------------------------------
 // GraphicsDeviceEvent
 
 
-//static RenderAPI* s_CurrentAPI = nullptr;
-//static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
+static RenderAPI* s_CurrentAPI = NULL;
+static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
 
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
 {
 	// Create graphics API implementation upon initialization
-	/*if (eventType == kUnityGfxDeviceEventInitialize)
+	if (eventType == kUnityGfxDeviceEventInitialize)
 	{
-		assert(s_CurrentAPI == nullptr);
+		assert(s_CurrentAPI == NULL);
 		s_DeviceType = s_Graphics->GetRenderer();
 		s_CurrentAPI = CreateRenderAPI(s_DeviceType);
 	}
@@ -99,9 +120,9 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 	if (eventType == kUnityGfxDeviceEventShutdown)
 	{
 		delete s_CurrentAPI;
-		s_CurrentAPI = nullptr;
+		s_CurrentAPI = NULL;
 		s_DeviceType = kUnityGfxRendererNull;
-	}*/
+	}
 }
 
 
@@ -116,14 +137,17 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
 	// Unknown / unsupported graphics device type? Do nothing
-	//if (s_CurrentAPI == nullptr)
-	//	return;
+	if (s_CurrentAPI == NULL)
+		return;
 
 	if (eventID == 1)
 	{
-		// true is left texture, false is right
-		//gstAVPipeline->Draw(true);
-		//gstAVPipeline->Draw(false);
+		gstAVPipeline->Draw(true);
+		gstAVPipeline->Draw(false);
+		/*ID3D11Texture2D* textures[2];
+		textures[0] = gstAVPipeline->GetTexturePtr(true);
+		textures[1] = gstAVPipeline->GetTexturePtr(false);
+		s_CurrentAPI->Render((void**)textures);*/
 	}
 
 }
@@ -135,52 +159,3 @@ extern "C" UnityRenderingEvent UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRen
 {
 	return OnRenderEvent;
 }
-
-// Callback for texture update events
-void TextureUpdateCallback(int eventID, void* data)
-{
-	if (eventID == kUnityRenderingExtEventUpdateTextureBeginV2)
-	{
-		UnityRenderingExtTextureUpdateParamsV2* params = (UnityRenderingExtTextureUpdateParamsV2 *) data;
-		unsigned int frame = params->userData;
-		if(frame == 0)
-			gstAVPipeline->Draw(true);
-		else
-			gstAVPipeline->Draw(false);
-	}
-	/*else if (eventID == kUnityRenderingExtEventUpdateTextureEndV2)
-	{
-		// UpdateTextureEnd: Free up the temporary memory.
-		UnityRenderingExtTextureUpdateParamsV2* params = (UnityRenderingExtTextureUpdateParamsV2*)data;
-		//free(params->texData);
-		unsigned int frame = params->userData;
-		if (frame == 0)
-			gstAVPipeline->EndDraw(true);
-		else
-			gstAVPipeline->EndDraw(false);
-	}*/
-}
-
-extern "C" UnityRenderingEventAndData UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetTextureUpdateCallback()
-{
-	return TextureUpdateCallback;
-}
-
-/*
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-UnityRenderingExtEvent(UnityRenderingExtEventType event, void* data)
-{
-	switch (event)
-	{
-	case kUnityRenderingExtEventBeforeDrawCall:
-		// do some stuff
-		break;
-	case kUnityRenderingExtEventAfterDrawCall:
-		// undo some stuff
-		break;
-	case kUnityRenderingExtEventUpdateTextureBeginV2:
-		gstAVPipeline->Draw(true);
-		gstAVPipeline->Draw(false);
-		break;
-	}
-}*/

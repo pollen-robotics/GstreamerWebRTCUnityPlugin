@@ -10,25 +10,23 @@
 class GstAVPipeline {
 
 private:
-	GMainLoop* main_loop_ = nullptr;
-	GMainContext* main_context_ = nullptr;
 	GstElement* _pipeline = nullptr;
-	GstBus* _bus = nullptr;
-	//unsigned int _busWatchId = 0;
-	IUnityInterfaces* _s_UnityInterfaces = nullptr;
-	GThread* _thread;	
 	GstD3D11Device* _device = nullptr;
+
+	IUnityInterfaces* _s_UnityInterfaces = nullptr;
 	GstVideoInfo _render_info;	
+	std::string decoder_factory;
+	int nb_run = 0;
 	struct AppData
 	{
 		GstAVPipeline* avpipeline = nullptr;
 		GstCaps* last_caps = nullptr;
-		GstD3D11Converter* conv = nullptr;
+		std::mutex lock;
 		GstSample* last_sample = nullptr;
 		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture = nullptr;
 		Microsoft::WRL::ComPtr<IDXGIKeyedMutex> keyed_mutex = nullptr;
 		GstBuffer* shared_buffer = nullptr;
-		std::mutex lock;
+		GstD3D11Converter* conv = nullptr;
 	};
 
 	std::unique_ptr<AppData> _leftData = nullptr;
@@ -51,7 +49,6 @@ public:
 	static void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data);
 
 	static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
-	static GstBusSyncReply GstAVPipeline::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
-	static gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
-	static gpointer loopFunc(gpointer user_data);
+
+	static bool find_decoder(gint64 luid, std::string& feature_name);
 };
