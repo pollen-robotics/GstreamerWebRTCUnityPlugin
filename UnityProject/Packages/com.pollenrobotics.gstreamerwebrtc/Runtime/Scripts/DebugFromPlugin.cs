@@ -5,42 +5,45 @@ using AOT;
 using System;
 using System.Runtime.InteropServices;
 
-public class DebugFromPlugin : MonoBehaviour
+namespace GstreamerWebRTC
 {
-    // Use this for initialization
-    void OnEnable()
+    public class DebugFromPlugin : MonoBehaviour
     {
-        RegisterDebugCallback(OnDebugCallback);
-    }
-
-    //------------------------------------------------------------------------------------------------
-    [DllImport("UnityGStreamerPlugin", CallingConvention = CallingConvention.Cdecl)]
-    static extern void RegisterDebugCallback(debugCallback cb);
-    //Create string param callback delegate
-    delegate void debugCallback(IntPtr request, int level, int size);
-    enum Level { info, warning, error };
-    [MonoPInvokeCallback(typeof(debugCallback))]
-    static void OnDebugCallback(IntPtr request, int level, int size)
-    {
-        //Ptr to string
-        string debug_string = Marshal.PtrToStringAnsi(request, size);
-        switch (level)
+        // Use this for initialization
+        void OnEnable()
         {
-            case (int)Level.info:
-                {
-                    Debug.Log(debug_string);
-                    break;
-                }
-            case (int)Level.warning:
-                {
-                    Debug.LogWarning(debug_string);
-                    break;
-                }
-            case (int)Level.error:
-                {
-                    Debug.LogError(debug_string);
-                    break;
-                }
+            RegisterDebugCallback(OnDebugCallback);
+        }
+
+        //------------------------------------------------------------------------------------------------
+        [DllImport("UnityGStreamerPlugin", CallingConvention = CallingConvention.Cdecl)]
+        static extern void RegisterDebugCallback(debugCallback cb);
+        //Create string param callback delegate
+        delegate void debugCallback(IntPtr request, int level, int size);
+        enum Level { info, warning, error };
+        [MonoPInvokeCallback(typeof(debugCallback))]
+        static void OnDebugCallback(IntPtr request, int level, int size)
+        {
+            //Ptr to string
+            string debug_string = Marshal.PtrToStringAnsi(request, size);
+            switch (level)
+            {
+                case (int)Level.info:
+                    {
+                        Debug.Log(debug_string);
+                        break;
+                    }
+                case (int)Level.warning:
+                    {
+                        Debug.LogWarning(debug_string);
+                        break;
+                    }
+                case (int)Level.error:
+                    {
+                        Debug.LogError(debug_string);
+                        break;
+                    }
+            }
         }
     }
 }

@@ -156,15 +156,13 @@ void GstAVPipeline::Draw(bool left)
 	GstSample* sample = nullptr;
 
 	/* Steal sample pointer */
-	{
-		std::lock_guard <std::mutex> lk(data->lock);
-		/* If there's no updated sample, don't need to render again */
-		if (!data->last_sample)
-			return;
+	std::lock_guard <std::mutex> lk(data->lock);
+	/* If there's no updated sample, don't need to render again */
+	if (!data->last_sample)
+		return;
 
-		sample = data->last_sample;
-		data->last_sample = nullptr;
-	}
+	sample = data->last_sample;
+	data->last_sample = nullptr;
 
 	auto buf = gst_sample_get_buffer(sample);
 	if (!buf) {
@@ -176,8 +174,8 @@ void GstAVPipeline::Draw(bool left)
 	data->keyed_mutex->ReleaseSync(0);
 	/* Converter will take gst_d3d11_device_lock() and acquire sync */
 	gst_d3d11_converter_convert_buffer(data->conv, buf, data->shared_buffer);
-	gst_clear_sample(&sample);
 	data->keyed_mutex->AcquireSync(0, INFINITE);
+	gst_sample_unref(sample);
 }
 
 void GstAVPipeline::EndDraw(bool left)
@@ -345,10 +343,10 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 		D3D11_CREATE_DEVICE_BGRA_SUPPORT);
 	g_assert(_device);
 
-	if (!find_decoder(luid, decoder_factory)) {
+	/*if (!find_decoder(luid, decoder_factory)) {
 		gst_println("GPU does not support H.264 decoding");
 		decoder_factory = "avdec_h264";
-	}
+	}*/
 
 	//ComPtr <ID3D10Multithread> multi_thread;
 	/*hr = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice()->QueryInterface(IID_PPV_ARGS(&multi_thread));
@@ -361,6 +359,7 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 GstAVPipeline::~GstAVPipeline()
 {
 	gst_clear_object(&_device);
+	gst_object_unref(_device);
 }
 
 void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
@@ -368,8 +367,6 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 	Debug::Log("GstAVPipeline create pipeline", Level::Info);
 	Debug::Log(uri, Level::Info);
 	Debug::Log(remote_peer_id, Level::Info);
-
-	Debug::Log(decoder_factory, Level::Warning);
 
 	_pipeline = gst_pipeline_new("Plugin AV Pipeline");
 
@@ -429,6 +426,7 @@ void GstAVPipeline::DestroyPipeline()
 	if (_leftData != nullptr)
 	{
 		gst_clear_sample(&_leftData->last_sample);
+		gst_clear_caps(&_leftData->last_caps);
 		gst_clear_buffer(&_leftData->shared_buffer);
 		gst_clear_object(&_leftData->conv);
 		//_leftData->keyed_mutex->ReleaseSync(0);
@@ -438,6 +436,7 @@ void GstAVPipeline::DestroyPipeline()
 	if (_rightData != nullptr)
 	{
 		gst_clear_sample(&_rightData->last_sample);
+		gst_clear_caps(&_rightData->last_caps);
 		gst_clear_buffer(&_rightData->shared_buffer);
 		gst_clear_object(&_rightData->conv);
 		//_rightData->keyed_mutex->ReleaseSync(0);

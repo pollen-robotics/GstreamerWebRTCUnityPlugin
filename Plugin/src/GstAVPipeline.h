@@ -15,7 +15,6 @@ private:
 
 	IUnityInterfaces* _s_UnityInterfaces = nullptr;
 	GstVideoInfo _render_info;	
-	std::string decoder_factory;
 	int nb_run = 0;
 	struct AppData
 	{
