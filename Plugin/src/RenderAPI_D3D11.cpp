@@ -49,7 +49,7 @@ private:
 	ID3D11BlendState* m_BlendState;
 	ID3D11DepthStencilState* m_DepthState;*/
 
-	ComPtr<IDXGIFactory2> factory_;
+	//ComPtr<IDXGIFactory2> factory_;
 	ComPtr<IDXGISwapChain> swapchain_;
 	ComPtr<ID3D11Device> device_;
 	//ComPtr<ID3D11DeviceContext> context_;
@@ -472,18 +472,18 @@ void RenderAPI_D3D11::CreateResources()
   D3D_FEATURE_LEVEL_10_0,
 	};
 
-	ComPtr<IDXGIFactory1> factory;
-	auto hr = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
-	assert(SUCCEEDED(hr));
+	//ComPtr<IDXGIFactory1> factory;
+	//auto hr = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
+	//assert(SUCCEEDED(hr));
 
 	/* We will use CreateSwapChainForHwnd which requires IDXGIFactory2 interface */
-	hr = factory.As(&factory_);
-	assert(SUCCEEDED(hr));
+	//hr = factory.As(&factory_);
+	//assert(SUCCEEDED(hr));
 
 	/* Select first (default) device. User can select one among enumerated adapters */
 	ComPtr<IDXGIAdapter> adapter;
-	hr = factory_->EnumAdapters(0, &adapter);
-	assert(SUCCEEDED(hr));
+	//hr = factory_->EnumAdapters(0, &adapter);
+	//assert(SUCCEEDED(hr));
 
 	/*hr = D3D11CreateDevice(adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN,
 		nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, feature_levels,
@@ -507,7 +507,7 @@ void RenderAPI_D3D11::CreateResources()
 	sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampler_desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 	sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
-	hr = device_->CreateSamplerState(&sampler_desc, &sampler_);
+	auto hr = device_->CreateSamplerState(&sampler_desc, &sampler_);
 	assert(SUCCEEDED(hr));
 
 	D3D11_INPUT_ELEMENT_DESC input_desc[2];

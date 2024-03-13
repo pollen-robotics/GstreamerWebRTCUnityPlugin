@@ -83,12 +83,12 @@ namespace GstreamerWebRTC
 
         //CommandBuffer _command = null;
 
-        IEnumerator Start()
+        void Start()
         {
-            string ip_address = "localhost"; //PlayerPrefs.GetString("ip_address");
-                                             //string ip_address = "10.0.1.36";
-                                             // string ip_address="0.0.0.0";
-                                             //string ip_address = "192.168.1.108";
+            //string ip_address = "localhost"; //PlayerPrefs.GetString("ip_address");
+            string ip_address = "10.0.1.36";
+            // string ip_address="0.0.0.0";
+            //string ip_address = "192.168.1.108";
             _signallingServerURL = "ws://" + ip_address + ":8443";
 
             _signalling = new Signalling(_signallingServerURL, producer, remote_producer_name);
@@ -103,7 +103,7 @@ namespace GstreamerWebRTC
             CreateRenderTexture(false, ref rightTextureNativePtr, ref rightRawImage);
             _signalling.Connect();
 
-            yield return StartCoroutine("CallPluginAtEndOfFrames");
+            //yield return StartCoroutine("CallPluginAtEndOfFrames");
         }
 
         void CreateRenderTexture(bool left, ref IntPtr textureNativePtr, ref RawImage rawImage)
@@ -177,11 +177,11 @@ namespace GstreamerWebRTC
                  _command.Clear();
              }*/
 
-            /*CommandBuffer _command = new CommandBuffer();
-            _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
-            _command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), rightRawImage.texture, 1);
-            //_command.IssuePluginEvent(GetRenderEventFunc(), 1);
-            Graphics.ExecuteCommandBuffer(_command);*/
+            CommandBuffer _command = new CommandBuffer();
+            //_command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), leftRawImage.texture, 0);
+            //_command.IssuePluginCustomTextureUpdateV2(GetTextureUpdateCallback(), rightRawImage.texture, 1);
+            _command.IssuePluginEvent(GetRenderEventFunc(), 1);
+            Graphics.ExecuteCommandBuffer(_command);
         }
 
     }
