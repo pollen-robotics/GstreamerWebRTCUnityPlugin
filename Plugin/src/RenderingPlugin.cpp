@@ -10,6 +10,13 @@
 
 
 static std::unique_ptr<GstAVPipeline> gstAVPipeline = nullptr;
+static IUnityInterfaces* s_UnityInterfaces = NULL;
+static IUnityGraphics* s_Graphics = NULL;
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
+{
+	gstAVPipeline->CreateDevice();
+}
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id)
 {
@@ -47,9 +54,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTexture(void* text
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 
-static IUnityInterfaces* s_UnityInterfaces = NULL;
-static IUnityGraphics* s_Graphics = NULL;
-
 extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
 	s_UnityInterfaces = unityInterfaces;
@@ -68,16 +72,18 @@ extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 	OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 
 	SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
+	//SetEnvironmentVariable("GST_DEBUG", "h264decoder:6");
+	//SetEnvironmentVariable("GST_TRACERS", "buffer - lateness(file = \"C:\\buffer_lateness.log\")");
 	gst_debug_set_default_threshold(GST_LEVEL_INFO);
-	gst_init(nullptr, nullptr);
+	gst_init(nullptr, nullptr);	
 	gstAVPipeline = std::make_unique<GstAVPipeline>(s_UnityInterfaces);
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 {
-	gstAVPipeline.reset(nullptr);
-	gst_deinit();
 	s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
+	gstAVPipeline.reset();
+	gst_deinit();
 }
 
 #if UNITY_WEBGL

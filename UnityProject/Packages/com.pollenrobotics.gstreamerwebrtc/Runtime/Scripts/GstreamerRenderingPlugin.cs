@@ -27,6 +27,13 @@ namespace GstreamerWebRTC
 #else
         [DllImport("UnityGStreamerPlugin")]
 #endif
+        private static extern void CreateDevice();
+
+#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
+    [DllImport("__Internal")]
+#else
+        [DllImport("UnityGStreamerPlugin")]
+#endif
         private static extern void DestroyPipeline();
 
 #if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
@@ -99,6 +106,7 @@ namespace GstreamerWebRTC
         RegisterPlugin();
 #endif
 
+            CreateDevice();
             CreateRenderTexture(true, ref leftTextureNativePtr, ref leftRawImage);
             CreateRenderTexture(false, ref rightTextureNativePtr, ref rightRawImage);
             _signalling.Connect();

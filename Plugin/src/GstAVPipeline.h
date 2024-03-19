@@ -10,12 +10,23 @@
 class GstAVPipeline {
 
 private:
+	GstPlugin* plugin_webrtcrs;
+	GstPlugin* plugin_webrtc;
+	GstPlugin* plugin_d3d11;
+	GstPlugin* plugin_rtpmanager;
+	GstPlugin* plugin_opus;
+	GstPlugin* plugin_wasapi2;
+	GstPlugin* plugin_dtls;
+	GstPlugin* plugin_srtp;
 	GstElement* _pipeline = nullptr;
 	GstD3D11Device* _device = nullptr;
+	GMainContext* main_context_ = nullptr;
+	GMainLoop* main_loop_ = nullptr;  
+	GThread* thread_ = nullptr;
+	guint winmm_timer_resolution = 0;
 
 	IUnityInterfaces* _s_UnityInterfaces = nullptr;
 	GstVideoInfo _render_info;	
-	int nb_run = 0;
 	struct AppData
 	{
 		GstAVPipeline* avpipeline = nullptr;
@@ -37,17 +48,28 @@ public:
 
 	ID3D11Texture2D* GetTexturePtr(bool left = true);
 	void Draw(bool left);
-	void EndDraw(bool left);
+	//void EndDraw(bool left);
 
 	void CreatePipeline(const char* uri, const char* remote_peer_id);
+	void CreateDevice();
 	void DestroyPipeline();
 
 	bool CreateTexture(unsigned int width, unsigned int height, bool left = true);
 	void ReleaseTexture(ID3D11Texture2D* texture);
 
+private:
+
 	static void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data);
+	static void webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata);
 
 	static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
 	static bool find_decoder(gint64 luid, std::string& feature_name);
+
+	static gpointer main_loop_func(gpointer data);
+	static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
+	static GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
+
+	static guint enable_winmm_timer_resolution(void);
+	static void clear_winmm_timer_resolution(guint resolution);
 };

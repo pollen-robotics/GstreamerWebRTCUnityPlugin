@@ -6,9 +6,43 @@
 #include <dxgiformat.h>
 #include <d3d11_1.h>
 
+#include <timeapi.h>
 
 #include "Unity/IUnityGraphicsD3D11.h"
 using namespace Microsoft::WRL;
+
+// from https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/817/
+guint GstAVPipeline::enable_winmm_timer_resolution(void)
+{
+	TIMECAPS time_caps;
+	guint resolution = 0;
+	MMRESULT res;
+
+	res = timeGetDevCaps(&time_caps, sizeof(TIMECAPS));
+	if (res != TIMERR_NOERROR) {
+		g_warning("timeGetDevCaps() returned non-zero code %d", res);
+		return 0;
+	}
+
+	resolution = MIN(MAX(time_caps.wPeriodMin, 1), time_caps.wPeriodMax);
+	res = timeBeginPeriod(resolution);
+	if (res != TIMERR_NOERROR) {
+		g_warning("timeBeginPeriod() returned non-zero code %d", res);
+		return 0;
+	}
+
+	Debug::Log("Use Windows high-resolution clock, precision: " + std::to_string(resolution) + " ms");
+
+	return resolution;
+}
+
+void GstAVPipeline::clear_winmm_timer_resolution(guint resolution)
+{
+	if (resolution == 0)
+		return;
+
+	timeEndPeriod(resolution);
+}
 
 
 
@@ -178,7 +212,7 @@ void GstAVPipeline::Draw(bool left)
 	gst_sample_unref(sample);
 }
 
-void GstAVPipeline::EndDraw(bool left)
+/*void GstAVPipeline::EndDraw(bool left)
 {
 	//Debug::Log("end drawing");
 	AppData* data;
@@ -194,21 +228,10 @@ void GstAVPipeline::EndDraw(bool left)
 	}
 
 	data->keyed_mutex->AcquireSync(0, INFINITE);
-}
+}*/
 
 void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) {
 	GstAVPipeline* avpipeline = static_cast<GstAVPipeline*>(data);
-
-	std::string webrtcbin_name = "webrtcbin" + std::to_string(avpipeline->nb_run);
-	GstElement* webrtcbin = gst_bin_get_by_name(GST_BIN(src), webrtcbin_name.c_str());
-
-	if (webrtcbin) {
-		g_object_set(webrtcbin, "latency", 50, nullptr);
-		gst_object_unref(webrtcbin);
-	}
-	else {
-		Debug::Log(webrtcbin_name + " not found", Level::Warning);
-	}
 
 	gchar* pad_name = gst_pad_get_name(new_pad);
 	Debug::Log("Adding pad ");
@@ -220,19 +243,27 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		GstElement* d3d11h264dec = gst_element_factory_make("d3d11h264dec", nullptr);
 		//GstElement* d3d11h264dec = gst_element_factory_make("nvh264dec", nullptr);
 		//GstElement* d3d11upload = gst_element_factory_make("d3d11upload", nullptr);
+		GstElement* d3d11convert = gst_element_factory_make("d3d11convert", nullptr);
 		GstElement* appsink = gst_element_factory_make("appsink", nullptr);
 
-		if (!rtph264depay || !h264parse/* || !queue*/ || !d3d11h264dec ||/* !d3d11upload ||*/ !appsink) {
+		if (!rtph264depay || !h264parse ||/* !queue ||*/ !d3d11h264dec || d3d11convert ||/* !d3d11upload ||*/ !appsink) {
 			Debug::Log("Failed to create all elements");
 		}
 
-		GstCaps* caps = gst_caps_from_string("video/x-raw(memory:D3D11Memory)");
-		g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 100, nullptr);
+		GstCaps* caps = gst_caps_from_string("video/x-raw(memory:D3D11Memory),format=RGBA");
+		g_object_set(appsink, "caps", caps, /*"drop", true, "max-buffers", 3,*/ nullptr);
+		//g_object_set(queue, "max-size-buffers", 10, "max-size-bytes", 0, "max-size-time", 0, "leaky-type",2, nullptr);
 		gst_caps_unref(caps);
 
-		gst_bin_add_many(GST_BIN(avpipeline->_pipeline), rtph264depay, h264parse, /*queue,*/ d3d11h264dec/*, d3d11upload*/, appsink, nullptr);
+		/*gst_bin_add(GST_BIN(avpipeline->_pipeline), rtph264depay);
+		gst_bin_add(GST_BIN(avpipeline->_pipeline), h264parse);
+		gst_bin_add(GST_BIN(avpipeline->_pipeline), d3d11h264dec);
+		gst_bin_add(GST_BIN(avpipeline->_pipeline), queue);
+		gst_bin_add(GST_BIN(avpipeline->_pipeline), appsink);*/
 
-		GstAppSinkCallbacks callbacks = { nullptr };
+		gst_bin_add_many(GST_BIN(avpipeline->_pipeline), rtph264depay, h264parse, /*queue,*/ d3d11h264dec/*, d3d11upload*/ , d3d11convert, appsink, nullptr);
+
+		GstAppSinkCallbacks callbacks = {nullptr};
 		callbacks.new_sample = on_new_sample;
 		
 		if (g_str_has_prefix(pad_name, "video_0"))
@@ -247,7 +278,7 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 			
 		}
 
-		if (!gst_element_link_many(rtph264depay, h264parse/*, queue*/, d3d11h264dec/*, d3d11upload*/, appsink, nullptr)) {
+		if (!gst_element_link_many(rtph264depay, h264parse, d3d11h264dec, d3d11convert,/* d3d11upload *//*queue,*/ appsink, nullptr)) {
 			Debug::Log("Elements could not be linked.");
 		}
 
@@ -257,33 +288,38 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 
 		gst_element_sync_state_with_parent(rtph264depay);
 		gst_element_sync_state_with_parent(h264parse);
-		//gst_element_sync_state_with_parent(queue);
 		gst_element_sync_state_with_parent(d3d11h264dec);
+		//gst_element_sync_state_with_parent(queue);
 		//gst_element_sync_state_with_parent(d3d11upload);
+		gst_element_sync_state_with_parent(d3d11convert);
 		gst_element_sync_state_with_parent(appsink);
 
 		gst_object_unref(rtph264depay);
 		gst_object_unref(h264parse);
 		//gst_object_unref(queue);
 		gst_object_unref(d3d11h264dec);
+		gst_object_unref(d3d11convert);
 		//gst_object_unref(d3d11upload);
 		gst_object_unref(appsink);
 	}
 	else if (g_str_has_prefix(pad_name, "audio")) {
 		Debug::Log("Adding audio pad " + std::string(pad_name));
 		GstElement* rtpopusdepay = gst_element_factory_make("rtpopusdepay", nullptr);
-		//GstElement* queue = gst_element_factory_make("queue", nullptr);
+		GstElement* queue = gst_element_factory_make("queue", nullptr);
 		GstElement* opusdec = gst_element_factory_make("opusdec", nullptr);
 		GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
 		GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
-		GstElement* autoaudiosink = gst_element_factory_make("autoaudiosink", nullptr);
+		//GstElement* autoaudiosink = gst_element_factory_make("autoaudiosink", nullptr);
+		GstElement* autoaudiosink = gst_element_factory_make("wasapi2sink", nullptr);
 
 		if (!rtpopusdepay || !opusdec || !audioconvert || !audioresample || !autoaudiosink) {
 			Debug::Log("Failed to create audio elements");
 		}
 		else {
-			gst_bin_add_many(GST_BIN(avpipeline->_pipeline), rtpopusdepay,/* queue,*/ opusdec, audioconvert, audioresample, autoaudiosink, nullptr);
-			if (!gst_element_link_many(rtpopusdepay, /*queue,*/ opusdec, audioconvert, audioresample, autoaudiosink, nullptr)) {
+			g_object_set(autoaudiosink, "low-latency",true, "provide-clock", false, nullptr);
+
+			gst_bin_add_many(GST_BIN(avpipeline->_pipeline), rtpopusdepay, queue, opusdec, audioconvert, audioresample, autoaudiosink, nullptr);
+			if (!gst_element_link_many(rtpopusdepay, opusdec, audioconvert, audioresample, queue, autoaudiosink, nullptr)) {
 				Debug::Log("Audio elements could not be linked.", Level::Error);
 			}
 			else {
@@ -294,21 +330,28 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 				gst_object_unref(sinkpad);
 
 				gst_element_sync_state_with_parent(rtpopusdepay);
-				//gst_element_sync_state_with_parent(queue);
 				gst_element_sync_state_with_parent(opusdec);
 				gst_element_sync_state_with_parent(audioconvert);
 				gst_element_sync_state_with_parent(audioresample);
+				gst_element_sync_state_with_parent(queue);
 				gst_element_sync_state_with_parent(autoaudiosink);
 			}
 		}
 		gst_object_unref(rtpopusdepay);
-		//gst_object_unref(queue);
+		gst_object_unref(queue);
 		gst_object_unref(opusdec);
 		gst_object_unref(audioconvert);
 		gst_object_unref(audioresample);
 		gst_object_unref(autoaudiosink);
 	}
 	g_free(pad_name);
+	//gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
+}
+
+void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
+{
+	Debug::Log("Configure webrtcbin", Level::Info);
+	//g_object_set(webrtcbin, "latency", 50, nullptr);
 }
 
 void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture) {
@@ -322,45 +365,61 @@ void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture) {
 
 GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInterfaces(s_UnityInterfaces)
 {
-	/* Find adapter LUID of render device, then create our device with the same
- * adapter */
-	ComPtr<IDXGIDevice> dxgi_device;
-	auto hr = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice()->QueryInterface(IID_PPV_ARGS(&dxgi_device));
-	g_assert(SUCCEEDED(hr));
+	plugin_webrtcrs = gst_plugin_load_by_name("rswebrtc");
+	if (!plugin_webrtcrs) {
+		Debug::Log("Failed to load 'rswebrtc' plugin", Level::Error);
+	}
+	plugin_webrtc = gst_plugin_load_by_name("webrtc");
+	if (!plugin_webrtc) {
+		Debug::Log("Failed to load 'webrtc' plugin", Level::Error);
+	}
+	plugin_d3d11 = gst_plugin_load_by_name("d3d11");
+	if (!plugin_d3d11) {
+		Debug::Log("Failed to load 'd3d11' plugin", Level::Error);
+	}
+	plugin_rtpmanager = gst_plugin_load_by_name("rtpmanager");
+	if (!plugin_rtpmanager) {
+		Debug::Log("Failed to load 'rtpmanager' plugin", Level::Error);
+	}
+	plugin_opus = gst_plugin_load_by_name("opus");
+	if (!plugin_opus) {
+		Debug::Log("Failed to load 'opus' plugin", Level::Error);
+	}
+	plugin_wasapi2 = gst_plugin_load_by_name("wasapi2");
+	if (!plugin_wasapi2) {
+		Debug::Log("Failed to load 'wasapi2' plugin", Level::Error);
+	}
+	plugin_dtls = gst_plugin_load_by_name("dtls");
+	if (!plugin_dtls) {
+		Debug::Log("Failed to load 'dtls' plugin", Level::Error);
+	}
+	plugin_srtp = gst_plugin_load_by_name("srtp");
+	if (!plugin_srtp) {
+		Debug::Log("Failed to load 'srtp' plugin", Level::Error);
+	}
 
-	ComPtr<IDXGIAdapter> adapter;
-	hr = dxgi_device->GetAdapter(&adapter);
-	g_assert(SUCCEEDED(hr));
-
-	DXGI_ADAPTER_DESC adapter_desc;
-	hr = adapter->GetDesc(&adapter_desc);
-	g_assert(SUCCEEDED(hr));
-
-	auto luid = gst_d3d11_luid_to_int64(&adapter_desc.AdapterLuid);
-
-	/* This device will be used by our pipeline */
-	_device = gst_d3d11_device_new_for_adapter_luid(luid,
-		D3D11_CREATE_DEVICE_BGRA_SUPPORT);
-	g_assert(_device);
-
-	/*if (!find_decoder(luid, decoder_factory)) {
-		gst_println("GPU does not support H.264 decoding");
-		decoder_factory = "avdec_h264";
-	}*/
-
-	//ComPtr <ID3D10Multithread> multi_thread;
-	/*hr = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice()->QueryInterface(IID_PPV_ARGS(&multi_thread));
-	g_assert(SUCCEEDED(hr));
-
-	multi_thread->SetMultithreadProtected(TRUE);
-	multi_thread->Release();*/
+	winmm_timer_resolution = enable_winmm_timer_resolution();
+	main_context_ = g_main_context_new();
+	main_loop_ = g_main_loop_new(main_context_, FALSE);
 }
 
 GstAVPipeline::~GstAVPipeline()
 {
 	gst_clear_object(&_device);
 	gst_object_unref(_device);
+	g_main_context_unref(main_context_);
+	g_main_loop_unref(main_loop_);
+	gst_object_unref(plugin_webrtcrs);
+	gst_object_unref(plugin_webrtc);
+	gst_object_unref(plugin_d3d11);
+	gst_object_unref(plugin_rtpmanager);
+	gst_object_unref(plugin_opus);
+	gst_object_unref(plugin_wasapi2);
+	gst_object_unref(plugin_dtls);
+	gst_object_unref(plugin_srtp);
+	clear_winmm_timer_resolution(winmm_timer_resolution);
 }
+
 
 void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 {
@@ -372,12 +431,11 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
 	GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
 	if (!_pipeline || !webrtcsrc) {
-		Debug::Log("Failed to create all elements", Level::Error);
+		Debug::Log("Failed to create webrtc element", Level::Error);
 		gst_object_unref(_pipeline);
 		_pipeline = nullptr;
 		return;
 	}
-
 
 	GObject* signaller;
 	g_object_get(webrtcsrc, "signaller", &signaller, nullptr);
@@ -385,6 +443,7 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 		g_object_set(signaller,
 			"producer-peer-id", remote_peer_id,
 			"uri", uri);
+		g_signal_connect(G_OBJECT(signaller), "webrtcbin-ready", G_CALLBACK(webrtcbin_ready), this);
 		g_object_unref(signaller); // Unref signaller when done
 	}
 	else {
@@ -396,23 +455,82 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
 	gst_bin_add_many(GST_BIN(_pipeline), webrtcsrc, nullptr);
 
+	//gst_pipeline_set_latency((GstPipeline*)_pipeline, 100000000);
 
-	auto state = gst_element_set_state(_pipeline, GstState::GST_STATE_PLAYING);
+	/*auto state = gst_element_set_state(_pipeline, GstState::GST_STATE_PLAYING);
 	if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE) {
 		Debug::Log("Cannot set pipeline to playing state", Level::Error);
 		gst_object_unref(_pipeline);
 		_pipeline = nullptr;
 		return;
+	}*/
+
+
+	thread_ = g_thread_new("bus thread", main_loop_func, this);
+	if (!thread_) {
+		Debug::Log("Failed to create GLib main thread", Level::Error);
+	}
+
+}
+
+void GstAVPipeline::CreateDevice()
+{
+	if (_device == nullptr)
+	{
+		/* Find adapter LUID of render device, then create our device with the same
+	* adapter */
+		ComPtr<IDXGIDevice> dxgi_device;
+		auto hr = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice()->QueryInterface(IID_PPV_ARGS(&dxgi_device));
+		g_assert(SUCCEEDED(hr));
+
+		ComPtr<IDXGIAdapter> adapter;
+		hr = dxgi_device->GetAdapter(&adapter);
+		g_assert(SUCCEEDED(hr));
+
+		DXGI_ADAPTER_DESC adapter_desc;
+		hr = adapter->GetDesc(&adapter_desc);
+		g_assert(SUCCEEDED(hr));
+
+		auto luid = gst_d3d11_luid_to_int64(&adapter_desc.AdapterLuid);
+
+		/* This device will be used by our pipeline */
+		_device = gst_d3d11_device_new_for_adapter_luid(luid,
+			D3D11_CREATE_DEVICE_BGRA_SUPPORT);
+		g_assert(_device);
+
+		/*if (!find_decoder(luid, decoder_factory)) {
+			gst_println("GPU does not support H.264 decoding");
+			decoder_factory = "avdec_h264";
+		}*/
+
+		//ComPtr <ID3D10Multithread> multi_thread;
+		/*hr = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice()->QueryInterface(IID_PPV_ARGS(&multi_thread));
+		g_assert(SUCCEEDED(hr));
+
+		multi_thread->SetMultithreadProtected(TRUE);
+		multi_thread->Release();*/
+	}
+	else
+	{
+		Debug::Log("Device already created", Level::Warning);
 	}
 }
 
 void GstAVPipeline::DestroyPipeline()
 {
-	/*g_main_loop_quit(main_loop_);
-	g_clear_pointer(&_thread, g_thread_join);
-	gst_clear_object(&_pipeline);*/
-	nb_run++;
-	if (_pipeline != nullptr) {
+	if (main_loop_ != nullptr)
+	{
+		g_main_loop_quit(main_loop_);
+		//g_main_loop_unref(main_loop_);
+		//main_loop_ = nullptr;
+	}
+
+	if (thread_ != nullptr) {
+		g_thread_join(thread_);
+		thread_ = nullptr;
+	}
+
+	/*if (_pipeline != nullptr) {
 		Debug::Log("GstAVPipeline pipeline released", Level::Info);
 		gst_element_set_state(_pipeline, GstState::GST_STATE_NULL);
 		gst_object_unref(_pipeline);
@@ -421,7 +539,7 @@ void GstAVPipeline::DestroyPipeline()
 	else
 	{
 		Debug::Log("GstAVPipeline pipeline already released", Level::Warning);
-	}
+	}*/
 
 	if (_leftData != nullptr)
 	{
@@ -429,8 +547,6 @@ void GstAVPipeline::DestroyPipeline()
 		gst_clear_caps(&_leftData->last_caps);
 		gst_clear_buffer(&_leftData->shared_buffer);
 		gst_clear_object(&_leftData->conv);
-		//_leftData->keyed_mutex->ReleaseSync(0);
-
 		_leftData.reset(nullptr);
 	}
 	if (_rightData != nullptr)
@@ -439,9 +555,11 @@ void GstAVPipeline::DestroyPipeline()
 		gst_clear_caps(&_rightData->last_caps);
 		gst_clear_buffer(&_rightData->shared_buffer);
 		gst_clear_object(&_rightData->conv);
-		//_rightData->keyed_mutex->ReleaseSync(0);
 		_rightData.reset(nullptr);
 	}
+
+
+	//g_main_context_unref(main_context_);
 }
 
 
@@ -507,4 +625,108 @@ bool GstAVPipeline::find_decoder(gint64 luid, std::string& feature_name)
 		return false;
 
 	return true;
+}
+
+gpointer GstAVPipeline::main_loop_func(gpointer data)
+{
+	Debug::Log("Entering main loop");
+	GstAVPipeline* self = static_cast<GstAVPipeline*>(data);
+	g_main_context_push_thread_default(self->main_context_);
+	GstBus* bus = gst_element_get_bus(self->_pipeline);
+	//gst_bus_add_watch(bus, busHandler, self);
+	gst_bus_set_sync_handler(bus, busSyncHandler, self, nullptr);
+
+	auto state = gst_element_set_state(self->_pipeline, GstState::GST_STATE_PLAYING);
+	if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE) {
+		Debug::Log("Cannot set pipeline to playing state", Level::Error);
+		gst_object_unref(self->_pipeline);
+		self->_pipeline = nullptr;		
+		return nullptr;
+	}
+
+	//self->main_loop_ = g_main_loop_new(nullptr, FALSE);
+	g_main_loop_run(self->main_loop_);
+
+	gst_element_set_state(self->_pipeline, GST_STATE_NULL);
+
+	gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
+	//gst_bus_remove_watch(bus);
+	gst_object_unref(bus);
+	g_main_context_pop_thread_default(self->main_context_);
+	Debug::Log("Quitting main loop");
+
+	return nullptr;
+}
+
+gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
+{
+	auto self = (GstAVPipeline*)data;
+
+	switch (GST_MESSAGE_TYPE(msg)) {
+	case GST_MESSAGE_ERROR:
+	{
+		GError* err;
+		gchar* dbg;
+
+		gst_message_parse_error(msg, &err, &dbg);
+		//gst_printerrln("ERROR %s", err->message);
+		Debug::Log(err->message, Level::Error);
+		if (dbg != nullptr)
+			Debug::Log(dbg);
+			//gst_printerrln("ERROR debug information: %s", dbg);
+		g_clear_error(&err);
+		g_free(dbg);
+		g_main_loop_quit(self->main_loop_);
+		break;
+	}
+	case GST_MESSAGE_EOS:
+		Debug::Log("Got EOS");
+		g_main_loop_quit(self->main_loop_);
+		break;
+	case GST_MESSAGE_LATENCY:
+	{
+		Debug::Log("Redistribute latency...");
+		gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
+		break;
+	}
+	default:
+		Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
+		break;
+	}
+	
+	return G_SOURCE_CONTINUE;
+}
+
+GstBusSyncReply GstAVPipeline::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data)
+{
+	auto self = (GstAVPipeline*)user_data;
+
+	switch (GST_MESSAGE_TYPE(msg)) {
+	case GST_MESSAGE_NEED_CONTEXT:
+	{
+		const gchar* ctx_type;
+		if (!gst_message_parse_context_type(msg, &ctx_type))
+			break;
+
+		/* non-d3d11 context message is not interested */
+		if (g_strcmp0(ctx_type, GST_D3D11_DEVICE_HANDLE_CONTEXT_TYPE) != 0)
+			break;
+
+		/* Pass our device to the message source element.
+		 * Otherwise pipeline will create another device */
+		auto context = gst_d3d11_context_new(self->_device);
+		gst_element_set_context(GST_ELEMENT(msg->src), context);
+		gst_context_unref(context);
+		break;
+	}
+	/*/case GST_MESSAGE_LATENCY:
+	{
+		Debug::Log("Redistribute latency...");
+		gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
+		break;
+	}*/
+	default:
+		break;
+	}
+	return GST_BUS_PASS;
 }
