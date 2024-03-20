@@ -6,24 +6,18 @@
 #include <gst/d3d11/gstd3d11.h>
 #include <wrl.h>
 #include <gst/app/app.h>
+#include <vector>
 
 class GstAVPipeline {
 
 private:
-	GstPlugin* plugin_webrtcrs;
-	GstPlugin* plugin_webrtc;
-	GstPlugin* plugin_d3d11;
-	GstPlugin* plugin_rtpmanager;
-	GstPlugin* plugin_opus;
-	GstPlugin* plugin_wasapi2;
-	GstPlugin* plugin_dtls;
-	GstPlugin* plugin_srtp;
+	std::vector<GstPlugin*> preloaded_plugins;
+
 	GstElement* _pipeline = nullptr;
 	GstD3D11Device* _device = nullptr;
 	GMainContext* main_context_ = nullptr;
 	GMainLoop* main_loop_ = nullptr;  
 	GThread* thread_ = nullptr;
-	guint winmm_timer_resolution = 0;
 
 	IUnityInterfaces* _s_UnityInterfaces = nullptr;
 	GstVideoInfo _render_info;	
@@ -69,6 +63,7 @@ private:
 	static gpointer main_loop_func(gpointer data);
 	static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
 	static GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
+	static void on_bus_message(GstBus* bus, GstMessage* msg, gpointer user_data);
 
 	static guint enable_winmm_timer_resolution(void);
 	static void clear_winmm_timer_resolution(guint resolution);

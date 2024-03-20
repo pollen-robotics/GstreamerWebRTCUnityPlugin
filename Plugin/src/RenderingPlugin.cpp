@@ -73,7 +73,7 @@ extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 
 	SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
 	//SetEnvironmentVariable("GST_DEBUG", "h264decoder:6");
-	//SetEnvironmentVariable("GST_TRACERS", "buffer - lateness(file = \"C:\\buffer_lateness.log\")");
+	//SetEnvironmentVariable("GST_TRACERS", "buffer - lateness(file = \"buffer_lateness.log\")");
 	gst_debug_set_default_threshold(GST_LEVEL_INFO);
 	gst_init(nullptr, nullptr);	
 	gstAVPipeline = std::make_unique<GstAVPipeline>(s_UnityInterfaces);
