@@ -65,9 +65,15 @@ private:
 	static GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
 	static void on_bus_message(GstBus* bus, GstMessage* msg, gpointer user_data);
 
-	static GstElement* GstAVPipeline::add_rtph264depay(GstElement* pipeline);
-	static GstElement* GstAVPipeline::add_h264parse(GstElement* pipeline);
-	static GstElement* GstAVPipeline::add_d3d11h264dec(GstElement* pipeline);
-	static GstElement* GstAVPipeline::add_d3d11convert(GstElement* pipeline);
-	static GstElement* GstAVPipeline::add_appsink(GstElement* pipeline);
+	static GstElement* add_rtph264depay(GstElement* pipeline);
+	static GstElement* add_h264parse(GstElement* pipeline);
+	static GstElement* add_d3d11h264dec(GstElement* pipeline);
+	static GstElement* add_d3d11convert(GstElement* pipeline);
+	static GstElement* add_appsink(GstElement* pipeline);
+	static GstElement* add_rtpopusdepay(GstElement* pipeline);
+	static GstElement* add_queue(GstElement* pipeline);
+	static GstElement* add_opusdec(GstElement* pipeline);
+	static GstElement* add_audioconvert(GstElement* pipeline);
+	static GstElement* add_audioresample(GstElement* pipeline);
+	static GstElement* add_wasapi2sink(GstElement* pipeline);
 };

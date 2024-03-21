@@ -237,6 +237,80 @@ GstElement* GstAVPipeline::add_appsink(GstElement* pipeline)
 	return appsink;
 }
 
+GstElement* GstAVPipeline::add_rtpopusdepay(GstElement* pipeline)
+{
+	GstElement* rtpopusdepay = gst_element_factory_make("rtpopusdepay", nullptr);
+	if (!rtpopusdepay) {
+		Debug::Log("Failed to create rtpopusdepay", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), rtpopusdepay);
+	return rtpopusdepay;
+}
+
+GstElement* GstAVPipeline::add_queue(GstElement* pipeline)
+{
+	GstElement* queue = gst_element_factory_make("queue", nullptr);
+	if (!queue) {
+		Debug::Log("Failed to create queue", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), queue);
+	return queue;
+}
+
+
+GstElement* GstAVPipeline::add_opusdec(GstElement* pipeline)
+{
+	GstElement* opusdec = gst_element_factory_make("opusdec", nullptr);
+	if (!opusdec) {
+		Debug::Log("Failed to create opusdec", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), opusdec);
+	return opusdec;
+}
+
+GstElement* GstAVPipeline::add_audioconvert(GstElement* pipeline)
+{
+	GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
+	if (!audioconvert) {
+		Debug::Log("Failed to create audioconvert", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), audioconvert);
+	return audioconvert;
+}
+
+GstElement* GstAVPipeline::add_audioresample(GstElement* pipeline)
+{
+	GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
+	if (!audioresample) {
+		Debug::Log("Failed to create audioresample", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), audioresample);
+	return audioresample;
+}
+
+GstElement* GstAVPipeline::add_wasapi2sink(GstElement* pipeline)
+{
+	GstElement* wasapi2sink = gst_element_factory_make("wasapi2sink", nullptr);
+	if (!wasapi2sink) {
+		Debug::Log("Failed to create wasapi2sink", Level::Error);
+		return nullptr;
+	}
+	g_object_set(wasapi2sink, "low-latency", true, "provide-clock", false, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), wasapi2sink);
+	return wasapi2sink;
+}
+
 void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) {
 	GstAVPipeline* avpipeline = static_cast<GstAVPipeline*>(data);
 
@@ -269,7 +343,9 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		}
 
 		GstPad* sinkpad = gst_element_get_static_pad(rtph264depay, "sink");
-		gst_pad_link(new_pad, sinkpad);
+		if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK) {
+			Debug::Log("Could not link dynamic video pad to rtph264depay", Level::Error);
+		}
 		gst_object_unref(sinkpad);
 
 		gst_element_sync_state_with_parent(rtph264depay);
@@ -286,45 +362,36 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 	}
 	else if (g_str_has_prefix(pad_name, "audio")) {
 		Debug::Log("Adding audio pad " + std::string(pad_name));
-		GstElement* rtpopusdepay = gst_element_factory_make("rtpopusdepay", nullptr);
-		GstElement* queue = gst_element_factory_make("queue", nullptr);
-		GstElement* opusdec = gst_element_factory_make("opusdec", nullptr);
-		GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
-		GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
-		//GstElement* autoaudiosink = gst_element_factory_make("autoaudiosink", nullptr);
-		GstElement* autoaudiosink = gst_element_factory_make("wasapi2sink", nullptr);
+		GstElement* rtpopusdepay = add_rtpopusdepay(avpipeline->_pipeline);
+		GstElement* queue = add_queue(avpipeline->_pipeline);
+		GstElement* opusdec = add_opusdec(avpipeline->_pipeline);
+		GstElement* audioconvert = add_audioconvert(avpipeline->_pipeline);
+		GstElement* audioresample = add_audioresample(avpipeline->_pipeline);
+		GstElement* wasapi2sink = add_wasapi2sink(avpipeline->_pipeline);
 
-		if (!rtpopusdepay || !opusdec || !audioconvert || !audioresample || !autoaudiosink) {
-			Debug::Log("Failed to create audio elements", Level::Error);
+		if (!gst_element_link_many(rtpopusdepay, opusdec, audioconvert, audioresample, queue, wasapi2sink, nullptr)) {
+			Debug::Log("Audio elements could not be linked.", Level::Error);
 		}
-		else {
-			g_object_set(autoaudiosink, "low-latency",true, "provide-clock", false, nullptr);
 
-			gst_bin_add_many(GST_BIN(avpipeline->_pipeline), rtpopusdepay, queue, opusdec, audioconvert, audioresample, autoaudiosink, nullptr);
-			if (!gst_element_link_many(rtpopusdepay, opusdec, audioconvert, audioresample, queue, autoaudiosink, nullptr)) {
-				Debug::Log("Audio elements could not be linked.", Level::Error);
-			}
-			else {
-				GstPad* sinkpad = gst_element_get_static_pad(rtpopusdepay, "sink");
-				if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK) {
-					Debug::Log("Could not link dynamic audio pad to rtpopusdepay", Level::Error);
-				}
-				gst_object_unref(sinkpad);
-
-				gst_element_sync_state_with_parent(rtpopusdepay);
-				gst_element_sync_state_with_parent(opusdec);
-				gst_element_sync_state_with_parent(audioconvert);
-				gst_element_sync_state_with_parent(audioresample);
-				gst_element_sync_state_with_parent(queue);
-				gst_element_sync_state_with_parent(autoaudiosink);
-			}
+		GstPad* sinkpad = gst_element_get_static_pad(rtpopusdepay, "sink");
+		if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK) {
+			Debug::Log("Could not link dynamic audio pad to rtpopusdepay", Level::Error);
 		}
+		gst_object_unref(sinkpad);
+
+		gst_element_sync_state_with_parent(rtpopusdepay);
+		gst_element_sync_state_with_parent(opusdec);
+		gst_element_sync_state_with_parent(audioconvert);
+		gst_element_sync_state_with_parent(audioresample);
+		gst_element_sync_state_with_parent(queue);
+		gst_element_sync_state_with_parent(wasapi2sink);
+
 		gst_object_unref(rtpopusdepay);
 		gst_object_unref(queue);
 		gst_object_unref(opusdec);
 		gst_object_unref(audioconvert);
 		gst_object_unref(audioresample);
-		gst_object_unref(autoaudiosink);
+		gst_object_unref(wasapi2sink);
 	}
 	g_free(pad_name);
 	//gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
