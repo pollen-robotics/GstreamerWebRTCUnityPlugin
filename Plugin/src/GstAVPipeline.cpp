@@ -311,6 +311,160 @@ GstElement* GstAVPipeline::add_wasapi2sink(GstElement* pipeline)
 	return wasapi2sink;
 }
 
+GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string & remote_peer_id, const std::string & uri, GstAVPipeline* self) {
+	GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
+	if (!webrtcsrc) {
+		Debug::Log("Failed to create webrtcsrc", Level::Error);
+		return nullptr;
+	}
+
+	GObject* signaller;
+	g_object_get(webrtcsrc, "signaller", &signaller, nullptr);
+	if (signaller) {
+		g_object_set(signaller, "producer-peer-id", remote_peer_id.c_str(), "uri", uri.c_str(), nullptr);
+		g_signal_connect(G_OBJECT(signaller), "webrtcbin-ready", G_CALLBACK(webrtcbin_ready), self);
+		g_object_unref(signaller); // Unref signaller when done
+	}
+	else {
+		Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
+	}
+
+	g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), self);
+
+	gst_bin_add(GST_BIN(pipeline), webrtcsrc);
+	return webrtcsrc;
+}
+
+GstElement* GstAVPipeline::add_wasapi2src(GstElement* pipeline) {
+	GstElement* wasapi2src = gst_element_factory_make("wasapi2src", nullptr);
+	if (!wasapi2src) {
+		Debug::Log("Failed to create wasapi2src", Level::Error);
+		return nullptr;
+	}
+	g_object_set(wasapi2src, "low-latency", true, "provide-clock", false, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), wasapi2src);
+	return wasapi2src;
+}
+
+GstElement* GstAVPipeline::add_opusenc(GstElement* pipeline) {
+	GstElement* opusenc = gst_element_factory_make("opusenc", nullptr);
+	if (!opusenc) {
+		Debug::Log("Failed to create opusenc", Level::Error);
+		return nullptr;
+	}
+
+	g_object_set(opusenc, "audio-type", "restricted-lowdelay",/* "frame-size", 10,*/ nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), opusenc);
+	return opusenc;
+}
+
+GstElement* GstAVPipeline::add_audio_caps_capsfilter(GstElement* pipeline) {
+	GstElement* audio_caps_capsfilter = gst_element_factory_make("capsfilter", nullptr);
+	if (!audio_caps_capsfilter) {
+		Debug::Log("Failed to create capsfilter", Level::Error);
+		return nullptr;
+	}
+
+	GstCaps* audio_caps = gst_caps_from_string("audio/x-opus");
+	gst_caps_set_simple(audio_caps, "channels", G_TYPE_INT, 1, "rate", G_TYPE_INT, 48000, nullptr);
+	g_object_set(audio_caps_capsfilter, "caps", audio_caps, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), audio_caps_capsfilter);
+	gst_caps_unref(audio_caps);
+	return audio_caps_capsfilter;
+}
+
+GstElement* GstAVPipeline::add_webrtcsink(GstElement* pipeline, const std::string& uri) {
+	GstElement* webrtcsink = gst_element_factory_make("webrtcsink", nullptr);
+	if (!webrtcsink) {
+		Debug::Log("Failed to create webrtcsink", Level::Error);
+		return nullptr;
+	}
+
+	GObject* signaller;
+	g_object_get(webrtcsink, "signaller", &signaller, nullptr);
+	if (signaller) {
+		g_object_set(signaller, "uri", uri.c_str(), nullptr);
+		g_object_unref(signaller); // Unref signaller when done
+	}
+	else {
+		Debug::Log("Failed to get signaller property from webrtcsink.", Level::Error);
+	}
+
+	GstStructure* meta_structure = gst_structure_new_empty("meta");
+	gst_structure_set(meta_structure, "name", G_TYPE_STRING, "UnityClient", nullptr);
+	GValue meta_value = G_VALUE_INIT;
+	g_value_init(&meta_value, GST_TYPE_STRUCTURE);
+	gst_value_set_structure(&meta_value, meta_structure);
+	g_object_set_property(G_OBJECT(webrtcsink), "meta", &meta_value);
+	gst_structure_free(meta_structure);
+	g_value_unset(&meta_value);
+
+	gst_bin_add(GST_BIN(pipeline), webrtcsink);
+	return webrtcsink;
+}
+
+GstElement* GstAVPipeline::add_audiotestsrc(GstElement* pipeline) {
+	GstElement* audiotestsrc = gst_element_factory_make("audiotestsrc", nullptr);
+	if (!audiotestsrc) {
+		Debug::Log("Failed to create audiotestsrc", Level::Error);
+		return nullptr;
+	}
+
+	g_object_set(audiotestsrc, "wave", "silence", "is-live", true, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), audiotestsrc);
+	return audiotestsrc;
+}
+
+GstElement* GstAVPipeline::add_audiomixer(GstElement* pipeline) {
+	GstElement* audiomixer = gst_element_factory_make("audiomixer", nullptr);
+	if (!audiomixer) {
+		Debug::Log("Failed to create audiomixer", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), audiomixer);
+	return audiomixer;
+}
+
+GstElement* GstAVPipeline::add_webrtcechoprobe(GstElement* pipeline) {
+	GstElement* webrtcechoprobe = gst_element_factory_make("webrtcechoprobe", nullptr);
+	if (!webrtcechoprobe) {
+		Debug::Log("Failed to create webrtcechoprobe", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), webrtcechoprobe);
+	return webrtcechoprobe;
+}
+
+GstElement* GstAVPipeline::add_webrtcdsp(GstElement* pipeline) {
+	GstElement* webrtcdsp = gst_element_factory_make("webrtcdsp", nullptr);
+	if (!webrtcdsp) {
+		Debug::Log("Failed to create webrtcdsp", Level::Error);
+		return nullptr;
+	}
+
+	g_object_set(webrtcdsp, "echo-cancel", false, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), webrtcdsp);
+	return webrtcdsp;
+}
+
+GstElement* GstAVPipeline::add_fakesink(GstElement* pipeline) {
+	GstElement* fakesink = gst_element_factory_make("fakesink", nullptr);
+	if (!fakesink) {
+		Debug::Log("Failed to create fakesink", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), fakesink);
+	return fakesink;
+}
+
 void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) {
 	GstAVPipeline* avpipeline = static_cast<GstAVPipeline*>(data);
 
@@ -372,6 +526,9 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		if (!gst_element_link_many(rtpopusdepay, opusdec, audioconvert, audioresample, queue, wasapi2sink, nullptr)) {
 			Debug::Log("Audio elements could not be linked.", Level::Error);
 		}
+
+		/*if (!gst_element_link(opusdec, avpipeline->audiomixer))
+			Debug::Log("Received audio could not be linked to audiomixer.", Level::Error);*/
 
 		GstPad* sinkpad = gst_element_get_static_pad(rtpopusdepay, "sink");
 		if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK) {
@@ -460,6 +617,7 @@ GstAVPipeline::~GstAVPipeline()
 	for (auto& plugin : preloaded_plugins) {
 		gst_object_unref(plugin);
 	}
+	preloaded_plugins.clear();
 }
 
 
@@ -471,66 +629,45 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
 	_pipeline = gst_pipeline_new("Plugin AV Pipeline");
 
-	GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
-	GstElement* autoaudiosrc = gst_element_factory_make("wasapi2src", nullptr);
-	GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
-	GstElement* queue = gst_element_factory_make("queue", nullptr);
-	GstElement* opusenc = gst_element_factory_make("opusenc", nullptr);
-	GstElement* audio_caps_capsfilter = gst_element_factory_make("capsfilter", nullptr);
-	GstElement* webrtcsink = gst_element_factory_make("webrtcsink", nullptr);
-	if (!_pipeline || !webrtcsrc || !autoaudiosrc || !audioconvert || !queue || !opusenc || !audio_caps_capsfilter || !webrtcsink) {
-		Debug::Log("Failed to create pipe elements", Level::Error);
-		gst_object_unref(_pipeline);
-		_pipeline = nullptr;
-		return;
-	}
+	GstElement* webrtcsrc = add_webrtcsrc(_pipeline, remote_peer_id, uri, this);
+	GstElement* wasapi2src = add_wasapi2src(_pipeline);
+	GstElement* webrtcdsp = add_webrtcdsp(_pipeline);
+	GstElement* audioconvert = add_audioconvert(_pipeline);
+	GstElement* queue = add_queue(_pipeline);
+	GstElement* opusenc = add_opusenc(_pipeline);
+	GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(_pipeline);
+	GstElement* webrtcsink = add_webrtcsink(_pipeline, uri);
 
-	GObject* signaller;
-	g_object_get(webrtcsrc, "signaller", &signaller, nullptr);
-	if (signaller) {
-		g_object_set(signaller, "producer-peer-id", remote_peer_id, "uri", uri, nullptr);
-		g_signal_connect(G_OBJECT(signaller), "webrtcbin-ready", G_CALLBACK(webrtcbin_ready), this);
-		g_object_unref(signaller); // Unref signaller when done
-	}
-	else {
-		Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
-	}
+	pipe_elements.push_back(webrtcsrc);
+	pipe_elements.push_back(webrtcsink);
+	pipe_elements.push_back(audio_caps_capsfilter);
+	pipe_elements.push_back(queue);
+	pipe_elements.push_back(audioconvert);
+	pipe_elements.push_back(wasapi2src);
+	pipe_elements.push_back(opusenc);
+	pipe_elements.push_back(webrtcdsp);
 
-	g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), this);
-
-
-	g_object_get(webrtcsink, "signaller", &signaller, nullptr);
-	if (signaller) {
-		g_object_set(signaller, "uri", uri, nullptr);
-		g_object_unref(signaller); // Unref signaller when done
-	}
-	else {
-		Debug::Log("Failed to get signaller property from webrtcsink.", Level::Error);
-	}
-
-	GstStructure* meta_structure = gst_structure_new_empty("meta");
-	gst_structure_set(meta_structure, "name", G_TYPE_STRING, "UnityClient", nullptr);
-	GValue meta_value = G_VALUE_INIT;
-	g_value_init(&meta_value, GST_TYPE_STRUCTURE);
-	gst_value_set_structure(&meta_value, meta_structure);
-	g_object_set_property(G_OBJECT(webrtcsink), "meta", &meta_value);
-	gst_structure_free(meta_structure);
-	g_value_unset(&meta_value);
-
-	//g_object_set(opusenc, "audio-type", "restricted-lowdelay",/* "frame-size", 10,*/ nullptr);
-	g_object_set(autoaudiosrc, "low-latency", true, "provide-clock", false, nullptr);
-	GstCaps* audio_caps = gst_caps_from_string("audio/x-opus");
-	gst_caps_set_simple(audio_caps, "channels", G_TYPE_INT, 1, "rate", G_TYPE_INT, 48000, nullptr);
-
-	g_object_set(audio_caps_capsfilter, "caps", audio_caps, nullptr);
-
-	gst_bin_add_many(GST_BIN(_pipeline), webrtcsrc, autoaudiosrc, audioconvert, queue, opusenc, audio_caps_capsfilter, webrtcsink, nullptr);
-
-	if (!gst_element_link_many(autoaudiosrc, audioconvert, queue, opusenc, audio_caps_capsfilter, webrtcsink, nullptr)) {
+	if (!gst_element_link_many(wasapi2src, audioconvert, webrtcdsp, queue, opusenc, audio_caps_capsfilter, webrtcsink, nullptr)) {
 		Debug::Log("Audio sending elements could not be linked.", Level::Error);
 	}
 
+	/*GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
+	audiomixer = add_audiomixer(_pipeline);
+	GstElement* audioconvert2 = add_audioconvert(_pipeline);
+	GstElement* audioresample = add_audioresample(_pipeline);
+	GstElement* webrtcechoprobe = add_webrtcechoprobe(_pipeline);
+	GstElement* fakesink = add_fakesink(_pipeline);
 
+	pipe_elements.push_back(audiotestsrc);
+	pipe_elements.push_back(audiomixer);
+	pipe_elements.push_back(audioconvert2);
+	pipe_elements.push_back(audioresample);
+	pipe_elements.push_back(webrtcechoprobe);
+	pipe_elements.push_back(fakesink);
+
+	if (!gst_element_link_many(audiotestsrc, audiomixer, audioresample, webrtcechoprobe, fakesink, nullptr)) {
+		Debug::Log("Audio dsp elements could not be linked.", Level::Error);
+	}*/
 
 	//gst_pipeline_set_latency((GstPipeline*)_pipeline, 20000000);
 
@@ -548,14 +685,6 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 		Debug::Log("Failed to create GLib main thread", Level::Error);
 	}
 
-	/*gst_caps_unref(audio_caps);
-	gst_object_unref(webrtcsrc);
-	gst_object_unref(webrtcsink);
-	gst_object_unref(audio_caps_capsfilter);
-	gst_object_unref(queue);
-	gst_object_unref(audioconvert);
-	gst_object_unref(autoaudiosrc);
-	gst_object_unref(opusenc);*/
 }
 
 void GstAVPipeline::CreateDevice()
@@ -643,7 +772,10 @@ void GstAVPipeline::DestroyPipeline()
 		_rightData.reset(nullptr);
 	}
 
-
+	for (auto& elt : pipe_elements) {
+		gst_object_unref(elt);
+	}
+	pipe_elements.clear();
 	//g_main_context_unref(main_context_);
 }
 

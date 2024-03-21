@@ -12,6 +12,8 @@ class GstAVPipeline {
 
 private:
 	std::vector<GstPlugin*> preloaded_plugins;
+	std::vector<GstElement*> pipe_elements;
+	//GstElement* audiomixer = nullptr;
 
 	GstElement* _pipeline = nullptr;
 	GstD3D11Device* _device = nullptr;
@@ -76,4 +78,15 @@ private:
 	static GstElement* add_audioconvert(GstElement* pipeline);
 	static GstElement* add_audioresample(GstElement* pipeline);
 	static GstElement* add_wasapi2sink(GstElement* pipeline);
+	static GstElement* add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri, GstAVPipeline* self);
+	static GstElement* add_wasapi2src(GstElement* pipeline);
+	static GstElement* add_opusenc(GstElement* pipeline);
+	static GstElement* add_audio_caps_capsfilter(GstElement* pipeline);
+	static GstElement* add_webrtcsink(GstElement* pipeline, const std::string& uri);
+	static GstElement* add_audiotestsrc(GstElement* pipeline);
+	static GstElement* add_audiomixer(GstElement* pipeline);
+	static GstElement* add_webrtcechoprobe(GstElement* pipeline);
+	static GstElement* add_webrtcdsp(GstElement* pipeline);
+	static GstElement* add_fakesink(GstElement* pipeline);
+
 };
