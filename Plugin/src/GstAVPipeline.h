@@ -65,6 +65,9 @@ private:
 	static GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
 	static void on_bus_message(GstBus* bus, GstMessage* msg, gpointer user_data);
 
-	static guint enable_winmm_timer_resolution(void);
-	static void clear_winmm_timer_resolution(guint resolution);
+	static GstElement* GstAVPipeline::add_rtph264depay(GstElement* pipeline);
+	static GstElement* GstAVPipeline::add_h264parse(GstElement* pipeline);
+	static GstElement* GstAVPipeline::add_d3d11h264dec(GstElement* pipeline);
+	static GstElement* GstAVPipeline::add_d3d11convert(GstElement* pipeline);
+	static GstElement* GstAVPipeline::add_appsink(GstElement* pipeline);
 };
