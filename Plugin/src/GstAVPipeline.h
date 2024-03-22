@@ -12,7 +12,7 @@ class GstAVPipeline {
 
 private:
 	std::vector<GstPlugin*> preloaded_plugins;
-	//GstElement* audiomixer = nullptr;
+	GstElement* audiomixer = nullptr;
 
 	GstElement* _pipeline = nullptr;
 	GstD3D11Device* _device = nullptr;
@@ -60,6 +60,7 @@ private:
 	static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
 	static bool find_decoder(gint64 luid, std::string& feature_name);
+	static gboolean dumpLatencyCallback(GstAVPipeline* self);
 
 	static gpointer main_loop_func(gpointer data);
 	static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
@@ -86,5 +87,6 @@ private:
 	static GstElement* add_webrtcechoprobe(GstElement* pipeline);
 	static GstElement* add_webrtcdsp(GstElement* pipeline);
 	static GstElement* add_fakesink(GstElement* pipeline);
+	static GstElement* add_tee(GstElement* pipeline);
 
 };
