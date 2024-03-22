@@ -507,12 +507,6 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		gst_element_sync_state_with_parent(d3d11h264dec);
 		gst_element_sync_state_with_parent(d3d11convert);
 		gst_element_sync_state_with_parent(appsink);
-
-		gst_object_unref(rtph264depay);
-		gst_object_unref(h264parse);
-		gst_object_unref(d3d11h264dec);
-		gst_object_unref(d3d11convert);
-		gst_object_unref(appsink);
 	}
 	else if (g_str_has_prefix(pad_name, "audio")) {
 		Debug::Log("Adding audio pad " + std::string(pad_name));
@@ -542,16 +536,8 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		gst_element_sync_state_with_parent(audioresample);
 		gst_element_sync_state_with_parent(queue);
 		gst_element_sync_state_with_parent(wasapi2sink);
-
-		gst_object_unref(rtpopusdepay);
-		gst_object_unref(queue);
-		gst_object_unref(opusdec);
-		gst_object_unref(audioconvert);
-		gst_object_unref(audioresample);
-		gst_object_unref(wasapi2sink);
 	}
 	g_free(pad_name);
-	//gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
 }
 
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
@@ -638,14 +624,6 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 	GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(_pipeline);
 	GstElement* webrtcsink = add_webrtcsink(_pipeline, uri);
 
-	pipe_elements.push_back(webrtcsrc);
-	pipe_elements.push_back(webrtcsink);
-	pipe_elements.push_back(audio_caps_capsfilter);
-	pipe_elements.push_back(queue);
-	pipe_elements.push_back(audioconvert);
-	pipe_elements.push_back(wasapi2src);
-	pipe_elements.push_back(opusenc);
-	pipe_elements.push_back(webrtcdsp);
 
 	if (!gst_element_link_many(wasapi2src, audioconvert, webrtcdsp, queue, opusenc, audio_caps_capsfilter, webrtcsink, nullptr)) {
 		Debug::Log("Audio sending elements could not be linked.", Level::Error);
@@ -658,27 +636,10 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 	GstElement* webrtcechoprobe = add_webrtcechoprobe(_pipeline);
 	GstElement* fakesink = add_fakesink(_pipeline);
 
-	pipe_elements.push_back(audiotestsrc);
-	pipe_elements.push_back(audiomixer);
-	pipe_elements.push_back(audioconvert2);
-	pipe_elements.push_back(audioresample);
-	pipe_elements.push_back(webrtcechoprobe);
-	pipe_elements.push_back(fakesink);
 
 	if (!gst_element_link_many(audiotestsrc, audiomixer, audioresample, webrtcechoprobe, fakesink, nullptr)) {
 		Debug::Log("Audio dsp elements could not be linked.", Level::Error);
 	}*/
-
-	//gst_pipeline_set_latency((GstPipeline*)_pipeline, 20000000);
-
-	/*auto state = gst_element_set_state(_pipeline, GstState::GST_STATE_PLAYING);
-	if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE) {
-		Debug::Log("Cannot set pipeline to playing state", Level::Error);
-		gst_object_unref(_pipeline);
-		_pipeline = nullptr;
-		return;
-	}*/
-
 
 	thread_ = g_thread_new("bus thread", main_loop_func, this);
 	if (!thread_) {
@@ -732,28 +693,25 @@ void GstAVPipeline::CreateDevice()
 
 void GstAVPipeline::DestroyPipeline()
 {
-	if (main_loop_ != nullptr)
-	{
+	if (main_loop_ != nullptr)	
 		g_main_loop_quit(main_loop_);
-		//g_main_loop_unref(main_loop_);
-		//main_loop_ = nullptr;
-	}
+	
 
 	if (thread_ != nullptr) {
 		g_thread_join(thread_);
 		thread_ = nullptr;
 	}
 
-	/*if (_pipeline != nullptr) {
+	if (_pipeline != nullptr) {
 		Debug::Log("GstAVPipeline pipeline released", Level::Info);
-		gst_element_set_state(_pipeline, GstState::GST_STATE_NULL);
+		//gst_element_set_state(_pipeline, GstState::GST_STATE_NULL);
 		gst_object_unref(_pipeline);
 		_pipeline = nullptr;
 	}
 	else
 	{
 		Debug::Log("GstAVPipeline pipeline already released", Level::Warning);
-	}*/
+	}
 
 	if (_leftData != nullptr)
 	{
@@ -771,12 +729,6 @@ void GstAVPipeline::DestroyPipeline()
 		gst_clear_object(&_rightData->conv);
 		_rightData.reset(nullptr);
 	}
-
-	for (auto& elt : pipe_elements) {
-		gst_object_unref(elt);
-	}
-	pipe_elements.clear();
-	//g_main_context_unref(main_context_);
 }
 
 
@@ -848,13 +800,13 @@ gpointer GstAVPipeline::main_loop_func(gpointer data)
 {
 	Debug::Log("Entering main loop");
 	GstAVPipeline* self = static_cast<GstAVPipeline*>(data);
+
 	g_main_context_push_thread_default(self->main_context_);
-	
+
 	GstBus* bus = gst_element_get_bus(self->_pipeline);
-	//gst_bus_add_watch(bus, busHandler, self);
-	//gst_bus_set_sync_handler(bus, busSyncHandler, self, nullptr);
-	//gst_bus_add_signal_watch(bus);
-	g_signal_connect(bus, "message", G_CALLBACK(on_bus_message), self);
+	gst_bus_add_watch(bus, busHandler, self);
+	gst_bus_set_sync_handler(bus, busSyncHandler, self, nullptr);
+
 
 	auto state = gst_element_set_state(self->_pipeline, GstState::GST_STATE_PLAYING);
 	if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE) {
@@ -864,30 +816,17 @@ gpointer GstAVPipeline::main_loop_func(gpointer data)
 		return nullptr;
 	}
 
-	//self->main_loop_ = g_main_loop_new(nullptr, FALSE);
 	g_main_loop_run(self->main_loop_);
 
 	gst_element_set_state(self->_pipeline, GST_STATE_NULL);
 
-	//gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
-	//gst_bus_remove_watch(bus);
+	gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
+	gst_bus_remove_watch(bus);
 	gst_object_unref(bus);
 	g_main_context_pop_thread_default(self->main_context_);
 	Debug::Log("Quitting main loop");
 
 	return nullptr;
-}
-
-void GstAVPipeline::on_bus_message(GstBus* bus, GstMessage* msg, gpointer user_data) {
-	auto self = (GstAVPipeline*)user_data;
-	switch (GST_MESSAGE_TYPE(msg)) {
-	case GST_MESSAGE_LATENCY:
-		Debug::Log("Redistribute latency...");
-		gst_bin_recalculate_latency(GST_BIN(self));
-		break;
-	default:
-		break;
-	}
 }
 
 gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
@@ -918,8 +857,7 @@ gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
 	case GST_MESSAGE_LATENCY:
 	{
 		Debug::Log("Redistribute latency...");
-		GstElement* pip = self->_pipeline;
-		gst_bin_recalculate_latency(GST_BIN(pip));
+		gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
 		break;
 	}
 	default:

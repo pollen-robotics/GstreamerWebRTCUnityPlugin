@@ -12,7 +12,6 @@ class GstAVPipeline {
 
 private:
 	std::vector<GstPlugin*> preloaded_plugins;
-	std::vector<GstElement*> pipe_elements;
 	//GstElement* audiomixer = nullptr;
 
 	GstElement* _pipeline = nullptr;
@@ -65,7 +64,6 @@ private:
 	static gpointer main_loop_func(gpointer data);
 	static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
 	static GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
-	static void on_bus_message(GstBus* bus, GstMessage* msg, gpointer user_data);
 
 	static GstElement* add_rtph264depay(GstElement* pipeline);
 	static GstElement* add_h264parse(GstElement* pipeline);
