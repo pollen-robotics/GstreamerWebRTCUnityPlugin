@@ -177,23 +177,304 @@ void GstAVPipeline::Draw(bool left)
 	gst_sample_unref(sample);
 }
 
-/*void GstAVPipeline::EndDraw(bool left)
+GstElement* GstAVPipeline::add_rtph264depay(GstElement* pipeline)
 {
-	//Debug::Log("end drawing");
-	AppData* data;
-	if (left)
-		data = _leftData.get();
-	else
-		data = _rightData.get();
+	GstElement* rtph264depay = gst_element_factory_make("rtph264depay", nullptr);
+	if (!rtph264depay) {
+		Debug::Log("Failed to create rtph264depay", Level::Error);
+		return nullptr;
+	}
+	gst_bin_add(GST_BIN(pipeline), rtph264depay);
+	return rtph264depay;
+}
 
-	if (data == nullptr)
-	{
-		Debug::Log("data is null", Level::Warning);
-		return;
+GstElement* GstAVPipeline::add_h264parse(GstElement* pipeline)
+{
+	GstElement* h264parse = gst_element_factory_make("h264parse", nullptr);
+	if (!h264parse) {
+		Debug::Log("Failed to create h264parse", Level::Error);
+		return nullptr;
+	}
+	gst_bin_add(GST_BIN(pipeline), h264parse);
+	return h264parse;
+}
+
+GstElement* GstAVPipeline::add_d3d11h264dec(GstElement* pipeline)
+{
+	GstElement* d3d11h264dec = gst_element_factory_make("d3d11h264dec", nullptr);
+	if (!d3d11h264dec) {
+		Debug::Log("Failed to create d3d11h264dec", Level::Error);
+		return nullptr;
+	}
+	gst_bin_add(GST_BIN(pipeline), d3d11h264dec);
+	return d3d11h264dec;
+}
+
+GstElement* GstAVPipeline::add_d3d11convert(GstElement* pipeline)
+{
+	GstElement* d3d11convert = gst_element_factory_make("d3d11convert", nullptr);
+	if (!d3d11convert) {
+		Debug::Log("Failed to create d3d11convert", Level::Error);
+		return nullptr;
+	}
+	gst_bin_add(GST_BIN(pipeline), d3d11convert);
+	return d3d11convert;
+}
+
+GstElement* GstAVPipeline::add_appsink(GstElement* pipeline)
+{
+	GstElement* appsink = gst_element_factory_make("appsink", nullptr);
+	if (!appsink) {
+		Debug::Log("Failed to create appsink", Level::Error);
+		return nullptr;
 	}
 
-	data->keyed_mutex->AcquireSync(0, INFINITE);
-}*/
+	GstCaps* caps = gst_caps_from_string("video/x-raw(memory:D3D11Memory),format=RGBA");
+	g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 3, nullptr);
+	gst_caps_unref(caps);
+
+	gst_bin_add(GST_BIN(pipeline), appsink);
+	return appsink;
+}
+
+GstElement* GstAVPipeline::add_rtpopusdepay(GstElement* pipeline)
+{
+	GstElement* rtpopusdepay = gst_element_factory_make("rtpopusdepay", nullptr);
+	if (!rtpopusdepay) {
+		Debug::Log("Failed to create rtpopusdepay", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), rtpopusdepay);
+	return rtpopusdepay;
+}
+
+GstElement* GstAVPipeline::add_queue(GstElement* pipeline)
+{
+	GstElement* queue = gst_element_factory_make("queue", nullptr);
+	if (!queue) {
+		Debug::Log("Failed to create queue", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), queue);
+	return queue;
+}
+
+
+GstElement* GstAVPipeline::add_opusdec(GstElement* pipeline)
+{
+	GstElement* opusdec = gst_element_factory_make("opusdec", nullptr);
+	if (!opusdec) {
+		Debug::Log("Failed to create opusdec", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), opusdec);
+	return opusdec;
+}
+
+GstElement* GstAVPipeline::add_audioconvert(GstElement* pipeline)
+{
+	GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
+	if (!audioconvert) {
+		Debug::Log("Failed to create audioconvert", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), audioconvert);
+	return audioconvert;
+}
+
+GstElement* GstAVPipeline::add_audioresample(GstElement* pipeline)
+{
+	GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
+	if (!audioresample) {
+		Debug::Log("Failed to create audioresample", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), audioresample);
+	return audioresample;
+}
+
+GstElement* GstAVPipeline::add_wasapi2sink(GstElement* pipeline)
+{
+	GstElement* wasapi2sink = gst_element_factory_make("wasapi2sink", nullptr);
+	if (!wasapi2sink) {
+		Debug::Log("Failed to create wasapi2sink", Level::Error);
+		return nullptr;
+	}
+	g_object_set(wasapi2sink, "low-latency", true, "provide-clock", false, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), wasapi2sink);
+	return wasapi2sink;
+}
+
+GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string & remote_peer_id, const std::string & uri, GstAVPipeline* self) {
+	GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
+	if (!webrtcsrc) {
+		Debug::Log("Failed to create webrtcsrc", Level::Error);
+		return nullptr;
+	}
+
+	GObject* signaller;
+	g_object_get(webrtcsrc, "signaller", &signaller, nullptr);
+	if (signaller) {
+		g_object_set(signaller, "producer-peer-id", remote_peer_id.c_str(), "uri", uri.c_str(), nullptr);
+		g_signal_connect(G_OBJECT(signaller), "webrtcbin-ready", G_CALLBACK(webrtcbin_ready), self);
+		g_object_unref(signaller); // Unref signaller when done
+	}
+	else {
+		Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
+	}
+
+	g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), self);
+
+	gst_bin_add(GST_BIN(pipeline), webrtcsrc);
+	return webrtcsrc;
+}
+
+GstElement* GstAVPipeline::add_wasapi2src(GstElement* pipeline) {
+	GstElement* wasapi2src = gst_element_factory_make("wasapi2src", nullptr);
+	if (!wasapi2src) {
+		Debug::Log("Failed to create wasapi2src", Level::Error);
+		return nullptr;
+	}
+	g_object_set(wasapi2src, "low-latency", true, "provide-clock", false, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), wasapi2src);
+	return wasapi2src;
+}
+
+GstElement* GstAVPipeline::add_opusenc(GstElement* pipeline) {
+	GstElement* opusenc = gst_element_factory_make("opusenc", nullptr);
+	if (!opusenc) {
+		Debug::Log("Failed to create opusenc", Level::Error);
+		return nullptr;
+	}
+
+	g_object_set(opusenc, "audio-type", "restricted-lowdelay",/* "frame-size", 10,*/ nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), opusenc);
+	return opusenc;
+}
+
+GstElement* GstAVPipeline::add_audio_caps_capsfilter(GstElement* pipeline) {
+	GstElement* audio_caps_capsfilter = gst_element_factory_make("capsfilter", nullptr);
+	if (!audio_caps_capsfilter) {
+		Debug::Log("Failed to create capsfilter", Level::Error);
+		return nullptr;
+	}
+
+	GstCaps* audio_caps = gst_caps_from_string("audio/x-opus");
+	gst_caps_set_simple(audio_caps, "channels", G_TYPE_INT, 1, "rate", G_TYPE_INT, 48000, nullptr);
+	g_object_set(audio_caps_capsfilter, "caps", audio_caps, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), audio_caps_capsfilter);
+	gst_caps_unref(audio_caps);
+	return audio_caps_capsfilter;
+}
+
+GstElement* GstAVPipeline::add_webrtcsink(GstElement* pipeline, const std::string& uri) {
+	GstElement* webrtcsink = gst_element_factory_make("webrtcsink", nullptr);
+	if (!webrtcsink) {
+		Debug::Log("Failed to create webrtcsink", Level::Error);
+		return nullptr;
+	}
+
+	GObject* signaller;
+	g_object_get(webrtcsink, "signaller", &signaller, nullptr);
+	if (signaller) {
+		g_object_set(signaller, "uri", uri.c_str(), nullptr);
+		g_object_unref(signaller); // Unref signaller when done
+	}
+	else {
+		Debug::Log("Failed to get signaller property from webrtcsink.", Level::Error);
+	}
+
+	GstStructure* meta_structure = gst_structure_new_empty("meta");
+	gst_structure_set(meta_structure, "name", G_TYPE_STRING, "UnityClient", nullptr);
+	GValue meta_value = G_VALUE_INIT;
+	g_value_init(&meta_value, GST_TYPE_STRUCTURE);
+	gst_value_set_structure(&meta_value, meta_structure);
+	g_object_set_property(G_OBJECT(webrtcsink), "meta", &meta_value);
+	gst_structure_free(meta_structure);
+	g_value_unset(&meta_value);
+
+	gst_bin_add(GST_BIN(pipeline), webrtcsink);
+	return webrtcsink;
+}
+
+GstElement* GstAVPipeline::add_audiotestsrc(GstElement* pipeline) {
+	GstElement* audiotestsrc = gst_element_factory_make("audiotestsrc", nullptr);
+	if (!audiotestsrc) {
+		Debug::Log("Failed to create audiotestsrc", Level::Error);
+		return nullptr;
+	}
+
+	g_object_set(audiotestsrc, "wave", "silence", "is-live", true, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), audiotestsrc);
+	return audiotestsrc;
+}
+
+GstElement* GstAVPipeline::add_audiomixer(GstElement* pipeline) {
+	GstElement* audiomixer = gst_element_factory_make("audiomixer", nullptr);
+	if (!audiomixer) {
+		Debug::Log("Failed to create audiomixer", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), audiomixer);
+	return audiomixer;
+}
+
+GstElement* GstAVPipeline::add_webrtcechoprobe(GstElement* pipeline) {
+	GstElement* webrtcechoprobe = gst_element_factory_make("webrtcechoprobe", nullptr);
+	if (!webrtcechoprobe) {
+		Debug::Log("Failed to create webrtcechoprobe", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), webrtcechoprobe);
+	return webrtcechoprobe;
+}
+
+GstElement* GstAVPipeline::add_webrtcdsp(GstElement* pipeline) {
+	GstElement* webrtcdsp = gst_element_factory_make("webrtcdsp", nullptr);
+	if (!webrtcdsp) {
+		Debug::Log("Failed to create webrtcdsp", Level::Error);
+		return nullptr;
+	}
+
+	//g_object_set(webrtcdsp, "echo-cancel", false, nullptr);
+
+	gst_bin_add(GST_BIN(pipeline), webrtcdsp);
+	return webrtcdsp;
+}
+
+GstElement* GstAVPipeline::add_fakesink(GstElement* pipeline) {
+	GstElement* fakesink = gst_element_factory_make("fakesink", nullptr);
+	if (!fakesink) {
+		Debug::Log("Failed to create fakesink", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), fakesink);
+	return fakesink;
+}
+
+GstElement* GstAVPipeline::add_tee(GstElement* pipeline) {
+	GstElement* tee = gst_element_factory_make("tee", nullptr);
+	if (!tee) {
+		Debug::Log("Failed to create tee", Level::Error);
+		return nullptr;
+	}
+
+	gst_bin_add(GST_BIN(pipeline), tee);
+	return tee;
+}
 
 void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) {
 	GstAVPipeline* avpipeline = static_cast<GstAVPipeline*>(data);
@@ -202,33 +483,11 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 	Debug::Log("Adding pad ");
 	if (g_str_has_prefix(pad_name, "video")) {
 		Debug::Log("Adding video pad " + std::string(pad_name));
-		GstElement* rtph264depay = gst_element_factory_make("rtph264depay", nullptr);
-		GstElement* h264parse = gst_element_factory_make("h264parse", nullptr);
-		//GstElement* queue = gst_element_factory_make("queue", nullptr);
-		GstElement* d3d11h264dec = gst_element_factory_make("d3d11h264dec", nullptr);
-		//GstElement* d3d11h264dec = gst_element_factory_make("nvh264dec", nullptr);
-		//GstElement* d3d11upload = gst_element_factory_make("d3d11upload", nullptr);
-		GstElement* d3d11convert = gst_element_factory_make("d3d11convert", nullptr);
-		GstElement* appsink = gst_element_factory_make("appsink", nullptr);
-
-		if (!rtph264depay || !h264parse /* || !queue*/ || !d3d11h264dec || d3d11convert /* || !d3d11upload*/ || !appsink) {
-			Debug::Log("Failed to create all elements");
-		}
-
-		GstCaps* caps = gst_caps_from_string("video/x-raw(memory:D3D11Memory),format=RGBA");
-		g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 3, nullptr);
-		//g_object_set(queue, "max-size-buffers", 10, "max-size-bytes", 0, "max-size-time", 0, "leaky-type",2, nullptr);
-		gst_caps_unref(caps);
-
-		gst_bin_add(GST_BIN(avpipeline->_pipeline), rtph264depay);
-		gst_bin_add(GST_BIN(avpipeline->_pipeline), h264parse);
-		gst_bin_add(GST_BIN(avpipeline->_pipeline), d3d11h264dec);
-		//gst_bin_add(GST_BIN(avpipeline->_pipeline), d3d11upload);
-		gst_bin_add(GST_BIN(avpipeline->_pipeline), d3d11convert);
-		//gst_bin_add(GST_BIN(avpipeline->_pipeline), queue);
-		gst_bin_add(GST_BIN(avpipeline->_pipeline), appsink);
-
-		//gst_bin_add_many(GST_BIN(avpipeline->_pipeline), rtph264depay, h264parse, /*queue,*/ d3d11h264dec/*, d3d11upload*/ , d3d11convert, appsink, nullptr);
+		GstElement* rtph264depay = add_rtph264depay(avpipeline->_pipeline);
+		GstElement* h264parse = add_h264parse(avpipeline->_pipeline);
+		GstElement* d3d11h264dec = add_d3d11h264dec(avpipeline->_pipeline);
+		GstElement* d3d11convert = add_d3d11convert(avpipeline->_pipeline);
+		GstElement* appsink = add_appsink(avpipeline->_pipeline);
 
 		GstAppSinkCallbacks callbacks = {nullptr};
 		callbacks.new_sample = on_new_sample;
@@ -241,78 +500,60 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 		else
 		{
 			Debug::Log("Connecting right video pad " + std::string(pad_name));
-			gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, avpipeline->_rightData.get(), nullptr);
-			
+			gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, avpipeline->_rightData.get(), nullptr);			
 		}
 
-		if (!gst_element_link_many(rtph264depay, h264parse, d3d11h264dec, /*d3d11upload,*/ d3d11convert/*, queue*/, appsink, nullptr)) {
+		if (!gst_element_link_many(rtph264depay, h264parse, d3d11h264dec, d3d11convert, appsink, nullptr)) {
 			Debug::Log("Elements could not be linked.");
 		}
 
 		GstPad* sinkpad = gst_element_get_static_pad(rtph264depay, "sink");
-		gst_pad_link(new_pad, sinkpad);
+		if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK) {
+			Debug::Log("Could not link dynamic video pad to rtph264depay", Level::Error);
+		}
 		gst_object_unref(sinkpad);
 
 		gst_element_sync_state_with_parent(rtph264depay);
 		gst_element_sync_state_with_parent(h264parse);
 		gst_element_sync_state_with_parent(d3d11h264dec);
-		//gst_element_sync_state_with_parent(queue);
-		//gst_element_sync_state_with_parent(d3d11upload);
 		gst_element_sync_state_with_parent(d3d11convert);
 		gst_element_sync_state_with_parent(appsink);
-
-		gst_object_unref(rtph264depay);
-		gst_object_unref(h264parse);
-		//gst_object_unref(queue);
-		gst_object_unref(d3d11h264dec);
-		gst_object_unref(d3d11convert);
-		//gst_object_unref(d3d11upload);
-		gst_object_unref(appsink);
 	}
 	else if (g_str_has_prefix(pad_name, "audio")) {
 		Debug::Log("Adding audio pad " + std::string(pad_name));
-		GstElement* rtpopusdepay = gst_element_factory_make("rtpopusdepay", nullptr);
-		GstElement* queue = gst_element_factory_make("queue", nullptr);
-		GstElement* opusdec = gst_element_factory_make("opusdec", nullptr);
-		GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
-		GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
-		//GstElement* autoaudiosink = gst_element_factory_make("autoaudiosink", nullptr);
-		GstElement* autoaudiosink = gst_element_factory_make("wasapi2sink", nullptr);
+		GstElement* rtpopusdepay = add_rtpopusdepay(avpipeline->_pipeline);
+		GstElement* queue = add_queue(avpipeline->_pipeline);
+		GstElement* opusdec = add_opusdec(avpipeline->_pipeline);
+		GstElement* audioconvert = add_audioconvert(avpipeline->_pipeline);
+		GstElement* audioresample = add_audioresample(avpipeline->_pipeline);
+		GstElement* wasapi2sink = add_wasapi2sink(avpipeline->_pipeline);
+		GstElement* tee = add_tee(avpipeline->_pipeline);
 
-		if (!rtpopusdepay || !opusdec || !audioconvert || !audioresample || !autoaudiosink) {
-			Debug::Log("Failed to create audio elements");
+		if (!gst_element_link_many(rtpopusdepay, opusdec, tee, queue, audioconvert, audioresample, wasapi2sink, nullptr)) {
+			Debug::Log("Audio elements could not be linked.", Level::Error);
 		}
-		else {
-			g_object_set(autoaudiosink, "low-latency",true, "provide-clock", false, nullptr);
 
-			gst_bin_add_many(GST_BIN(avpipeline->_pipeline), rtpopusdepay, queue, opusdec, audioconvert, audioresample, autoaudiosink, nullptr);
-			if (!gst_element_link_many(rtpopusdepay, opusdec, audioconvert, audioresample, queue, autoaudiosink, nullptr)) {
-				Debug::Log("Audio elements could not be linked.", Level::Error);
-			}
-			else {
-				GstPad* sinkpad = gst_element_get_static_pad(rtpopusdepay, "sink");
-				if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK) {
-					Debug::Log("Could not link dynamic audio pad to rtpopusdepay", Level::Error);
-				}
-				gst_object_unref(sinkpad);
+		GstElement* queue2 = add_queue(avpipeline->_pipeline);
+		if (!gst_element_link_many(tee, queue2, avpipeline->audiomixer, nullptr))
+			Debug::Log("Received audio could not be linked to audiomixer.", Level::Error);
 
-				gst_element_sync_state_with_parent(rtpopusdepay);
-				gst_element_sync_state_with_parent(opusdec);
-				gst_element_sync_state_with_parent(audioconvert);
-				gst_element_sync_state_with_parent(audioresample);
-				gst_element_sync_state_with_parent(queue);
-				gst_element_sync_state_with_parent(autoaudiosink);
-			}
+		GstPad* sinkpad = gst_element_get_static_pad(rtpopusdepay, "sink");
+		if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK) {
+			Debug::Log("Could not link dynamic audio pad to rtpopusdepay", Level::Error);
 		}
-		gst_object_unref(rtpopusdepay);
-		gst_object_unref(queue);
-		gst_object_unref(opusdec);
-		gst_object_unref(audioconvert);
-		gst_object_unref(audioresample);
-		gst_object_unref(autoaudiosink);
+		gst_object_unref(sinkpad);
+
+		gst_element_sync_state_with_parent(rtpopusdepay);
+		gst_element_sync_state_with_parent(opusdec);
+		gst_element_sync_state_with_parent(tee);
+		gst_element_sync_state_with_parent(queue);
+		gst_element_sync_state_with_parent(audioconvert);
+		gst_element_sync_state_with_parent(audioresample);
+		gst_element_sync_state_with_parent(wasapi2sink);
+		gst_element_sync_state_with_parent(queue2);
+		gst_element_sync_state_with_parent(avpipeline->audiomixer);
 	}
 	g_free(pad_name);
-	//gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
 }
 
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
@@ -335,7 +576,6 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 	if (!preloaded_plugins.back()) {
 		Debug::Log("Failed to load 'rswebrtc' plugin", Level::Error);
 	}
-
 	preloaded_plugins.push_back(gst_plugin_load_by_name("webrtc"));
 	if (!preloaded_plugins.back()) {
 		Debug::Log("Failed to load 'webrtc' plugin", Level::Error);
@@ -365,7 +605,6 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 		Debug::Log("Failed to load 'srtp' plugin", Level::Error);
 	}
 
-	//winmm_timer_resolution = enable_winmm_timer_resolution();
 	main_context_ = g_main_context_new();
 	main_loop_ = g_main_loop_new(main_context_, FALSE);
 }
@@ -379,9 +618,26 @@ GstAVPipeline::~GstAVPipeline()
 	for (auto& plugin : preloaded_plugins) {
 		gst_object_unref(plugin);
 	}
-	//clear_winmm_timer_resolution(winmm_timer_resolution);
+	preloaded_plugins.clear();
 }
 
+gboolean GstAVPipeline::dumpLatencyCallback(GstAVPipeline* self) {
+	if (self) {
+		GstQuery* query = gst_query_new_latency();
+		gboolean res = gst_element_query(self->_pipeline, query);
+		if (res) {
+			gboolean live;
+			GstClockTime min_latency, max_latency;
+			gst_query_parse_latency(query, &live, &min_latency, &max_latency);
+			// Log or std::cout your latency here
+			std::string msg = "Pipeline latency: live=" + std::to_string(live) + ", min=" + std::to_string(min_latency) + ", max=" + std::to_string(max_latency);
+			Debug::Log(msg);
+		}
+		gst_query_unref(query);	
+		return true;
+	}
+	return false;
+}
 
 void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 {
@@ -391,40 +647,33 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
 	_pipeline = gst_pipeline_new("Plugin AV Pipeline");
 
-	GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
-	if (!_pipeline || !webrtcsrc) {
-		Debug::Log("Failed to create webrtc element", Level::Error);
-		gst_object_unref(_pipeline);
-		_pipeline = nullptr;
-		return;
+	GstElement* webrtcsrc = add_webrtcsrc(_pipeline, remote_peer_id, uri, this);
+	GstElement* wasapi2src = add_wasapi2src(_pipeline);
+	GstElement* webrtcdsp = add_webrtcdsp(_pipeline);
+	GstElement* audioconvert = add_audioconvert(_pipeline);
+	GstElement* queue = add_queue(_pipeline);
+	GstElement* opusenc = add_opusenc(_pipeline);
+	GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(_pipeline);
+	GstElement* webrtcsink = add_webrtcsink(_pipeline, uri);
+
+
+	if (!gst_element_link_many(wasapi2src, audioconvert, webrtcdsp, queue, opusenc, audio_caps_capsfilter, webrtcsink, nullptr)) {
+		Debug::Log("Audio sending elements could not be linked.", Level::Error);
 	}
 
-	GObject* signaller;
-	g_object_get(webrtcsrc, "signaller", &signaller, nullptr);
-	if (signaller) {
-		g_object_set(signaller, "producer-peer-id", remote_peer_id, "uri", uri, nullptr);
-		g_signal_connect(G_OBJECT(signaller), "webrtcbin-ready", G_CALLBACK(webrtcbin_ready), this);
-		g_object_unref(signaller); // Unref signaller when done
+	GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
+	audiomixer = add_audiomixer(_pipeline);
+	GstElement* audioconvert2 = add_audioconvert(_pipeline);
+	GstElement* audioresample = add_audioresample(_pipeline);
+	GstElement* webrtcechoprobe = add_webrtcechoprobe(_pipeline);
+	GstElement* fakesink = add_fakesink(_pipeline);
+
+
+	if (!gst_element_link_many(audiotestsrc, audiomixer, audioresample, webrtcechoprobe, fakesink, nullptr)) {
+		Debug::Log("Audio dsp elements could not be linked.", Level::Error);
 	}
-	else {
-		Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
-	}
 
-	g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), this);
-
-
-	gst_bin_add_many(GST_BIN(_pipeline), webrtcsrc, nullptr);
-
-	//gst_pipeline_set_latency((GstPipeline*)_pipeline, 20000000);
-
-	/*auto state = gst_element_set_state(_pipeline, GstState::GST_STATE_PLAYING);
-	if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE) {
-		Debug::Log("Cannot set pipeline to playing state", Level::Error);
-		gst_object_unref(_pipeline);
-		_pipeline = nullptr;
-		return;
-	}*/
-
+	//g_timeout_add_seconds(3, G_SOURCE_FUNC(GstAVPipeline::dumpLatencyCallback), this);
 
 	thread_ = g_thread_new("bus thread", main_loop_func, this);
 	if (!thread_) {
@@ -477,28 +726,25 @@ void GstAVPipeline::CreateDevice()
 
 void GstAVPipeline::DestroyPipeline()
 {
-	if (main_loop_ != nullptr)
-	{
+	if (main_loop_ != nullptr)	
 		g_main_loop_quit(main_loop_);
-		//g_main_loop_unref(main_loop_);
-		//main_loop_ = nullptr;
-	}
+	
 
 	if (thread_ != nullptr) {
 		g_thread_join(thread_);
 		thread_ = nullptr;
 	}
 
-	/*if (_pipeline != nullptr) {
+	if (_pipeline != nullptr) {
 		Debug::Log("GstAVPipeline pipeline released", Level::Info);
-		gst_element_set_state(_pipeline, GstState::GST_STATE_NULL);
+		//gst_element_set_state(_pipeline, GstState::GST_STATE_NULL);
 		gst_object_unref(_pipeline);
 		_pipeline = nullptr;
 	}
 	else
 	{
 		Debug::Log("GstAVPipeline pipeline already released", Level::Warning);
-	}*/
+	}
 
 	if (_leftData != nullptr)
 	{
@@ -516,9 +762,6 @@ void GstAVPipeline::DestroyPipeline()
 		gst_clear_object(&_rightData->conv);
 		_rightData.reset(nullptr);
 	}
-
-
-	//g_main_context_unref(main_context_);
 }
 
 
@@ -590,13 +833,13 @@ gpointer GstAVPipeline::main_loop_func(gpointer data)
 {
 	Debug::Log("Entering main loop");
 	GstAVPipeline* self = static_cast<GstAVPipeline*>(data);
+
 	g_main_context_push_thread_default(self->main_context_);
-	
+
 	GstBus* bus = gst_element_get_bus(self->_pipeline);
-	//gst_bus_add_watch(bus, busHandler, self);
-	//gst_bus_set_sync_handler(bus, busSyncHandler, self, nullptr);
-	//gst_bus_add_signal_watch(bus);
-	g_signal_connect(bus, "message", G_CALLBACK(on_bus_message), self);
+	gst_bus_add_watch(bus, busHandler, self);
+	gst_bus_set_sync_handler(bus, busSyncHandler, self, nullptr);
+
 
 	auto state = gst_element_set_state(self->_pipeline, GstState::GST_STATE_PLAYING);
 	if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE) {
@@ -606,30 +849,17 @@ gpointer GstAVPipeline::main_loop_func(gpointer data)
 		return nullptr;
 	}
 
-	//self->main_loop_ = g_main_loop_new(nullptr, FALSE);
 	g_main_loop_run(self->main_loop_);
 
 	gst_element_set_state(self->_pipeline, GST_STATE_NULL);
 
-	//gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
-	//gst_bus_remove_watch(bus);
+	gst_bus_set_sync_handler(bus, nullptr, nullptr, nullptr);
+	gst_bus_remove_watch(bus);
 	gst_object_unref(bus);
 	g_main_context_pop_thread_default(self->main_context_);
 	Debug::Log("Quitting main loop");
 
 	return nullptr;
-}
-
-void GstAVPipeline::on_bus_message(GstBus* bus, GstMessage* msg, gpointer user_data) {
-	auto self = (GstAVPipeline*)user_data;
-	switch (GST_MESSAGE_TYPE(msg)) {
-	case GST_MESSAGE_LATENCY:
-		Debug::Log("Redistribute latency...");
-		gst_bin_recalculate_latency(GST_BIN(self));
-		break;
-	default:
-		break;
-	}
 }
 
 gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
@@ -660,8 +890,8 @@ gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
 	case GST_MESSAGE_LATENCY:
 	{
 		Debug::Log("Redistribute latency...");
-		GstElement* pip = self->_pipeline;
-		gst_bin_recalculate_latency(GST_BIN(pip));
+		gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
+		GstAVPipeline::dumpLatencyCallback(self);
 		break;
 	}
 	default:
