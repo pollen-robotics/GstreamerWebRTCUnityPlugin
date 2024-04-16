@@ -329,6 +329,8 @@ GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string
 		Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
 	}
 
+	g_object_set(webrtcsrc, "stun-server", nullptr, nullptr);
+
 	g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), self);
 
 	gst_bin_add(GST_BIN(pipeline), webrtcsrc);
@@ -402,6 +404,8 @@ GstElement* GstAVPipeline::add_webrtcsink(GstElement* pipeline, const std::strin
 	gst_structure_free(meta_structure);
 	g_value_unset(&meta_value);
 
+	g_object_set(webrtcsink, "stun-server", nullptr, nullptr);
+
 	gst_bin_add(GST_BIN(pipeline), webrtcsink);
 	return webrtcsink;
 }
@@ -448,7 +452,8 @@ GstElement* GstAVPipeline::add_webrtcdsp(GstElement* pipeline) {
 		return nullptr;
 	}
 
-	//g_object_set(webrtcdsp, "echo-cancel", false, nullptr);
+	//ToDo: seems to cut user's voice
+	g_object_set(webrtcdsp, "echo-cancel", false, nullptr);
 
 	gst_bin_add(GST_BIN(pipeline), webrtcdsp);
 	return webrtcdsp;
