@@ -3,6 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using UnityEngine.Events;
 
 namespace GstreamerWebRTC
 {
@@ -83,9 +84,11 @@ namespace GstreamerWebRTC
         const uint width = 960;
         const uint height = 720;
 
+        public UnityEvent event_OnPipelineStarted;
+
         //CommandBuffer _command = null;
 
-        public GStreamerRenderingPlugin(string ip_address, ref RawImage leftRawImage, ref RawImage rightRawImage)
+        public GStreamerRenderingPlugin(string ip_address, ref Texture leftTexture, ref Texture rightTexture)
         {
             _signallingServerURL = "ws://" + ip_address + ":8443";
 
@@ -94,24 +97,29 @@ namespace GstreamerWebRTC
             _signalling.event_OnRemotePeerId.AddListener(StartPipeline);
 
             CreateDevice();
-            CreateRenderTexture(true, ref leftTextureNativePtr, ref leftRawImage);
-            CreateRenderTexture(false, ref rightTextureNativePtr, ref rightRawImage);
+            leftTexture = CreateRenderTexture(true, ref leftTextureNativePtr);
+            rightTexture = CreateRenderTexture(false, ref rightTextureNativePtr);
+
+        }
+
+        public void Connect()
+        {
             _signalling.Connect();
         }
 
-        void CreateRenderTexture(bool left, ref IntPtr textureNativePtr, ref RawImage rawImage)
+        Texture CreateRenderTexture(bool left, ref IntPtr textureNativePtr)
         {
             CreateTexture(width, height, left);
             textureNativePtr = GetTexturePtr(left);
 
             if (textureNativePtr != IntPtr.Zero)
             {
-                var texture = Texture2D.CreateExternalTexture((int)width, (int)height, TextureFormat.RGBA32, mipChain: false, linear: true, textureNativePtr);
-                rawImage.texture = texture;
+                return Texture2D.CreateExternalTexture((int)width, (int)height, TextureFormat.RGBA32, mipChain: false, linear: true, textureNativePtr);
             }
             else
             {
                 Debug.LogError("Texture is null");
+                return null;
             }
 
         }
@@ -120,6 +128,7 @@ namespace GstreamerWebRTC
         {
             Debug.Log("start pipe " + remote_peer_id);
             CreatePipeline(_signallingServerURL, remote_peer_id);
+            event_OnPipelineStarted.Invoke();
         }
 
         public void Cleanup()
