@@ -96,6 +96,8 @@ namespace GstreamerWebRTC
 
             _signalling.event_OnRemotePeerId.AddListener(StartPipeline);
 
+            event_OnPipelineStarted = new UnityEvent();
+
             CreateDevice();
             leftTexture = CreateRenderTexture(true, ref leftTextureNativePtr);
             rightTexture = CreateRenderTexture(false, ref rightTextureNativePtr);

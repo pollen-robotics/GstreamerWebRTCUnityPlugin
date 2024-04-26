@@ -47,37 +47,6 @@ textureHandle, int w, int h)
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 
-static void ConfigureEnvironmentVariables()
-{
-    // Récupère la valeur actuelle de la variable PATH
-    char path[1024];
-    GetEnvironmentVariable("PATH", path, sizeof(path));
-
-    // Récupère la valeur de la variable GSTREAMER_1_0_ROOT_MSVC_X86_64
-    char gstreamer_root[1024];
-    GetEnvironmentVariable("GSTREAMER_1_0_ROOT_MSVC_X86_64", gstreamer_root, sizeof(gstreamer_root));
-
-    // Ajoute le chemin vers le dossier bin de GSTREAMER_1_0_ROOT_MSVC_X86_64 à
-    // la variable PATH
-    std::string new_path = path;
-    new_path += ";";
-    new_path += gstreamer_root;
-    new_path += "\\bin";
-
-    // Met à jour la variable d'environnement PATH
-    if (!SetEnvironmentVariable("PATH", new_path.c_str()))
-    {
-        // La fonction SetEnvironmentVariable a échoué
-        DWORD error_code = GetLastError();
-
-        // std::cout << "Erreur : impossible de mettre à jour la variable
-        // d'environnement PATH. Code d'erreur : " << error_code << std::endl;
-    }
-
-    // La variable d'environnement PATH a été mise à jour avec succès
-    // std::cout << "La variable d'environnement PATH a été mise à jour avec
-    // succès." << std::endl;
-}
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
@@ -96,12 +65,11 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
     OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 
-    ConfigureEnvironmentVariables();
-    SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
+    //SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
     // SetEnvironmentVariable("GST_DEBUG", "h264decoder:6");
     // SetEnvironmentVariable("GST_TRACERS", "buffer - lateness(file =
     // \"buffer_lateness.log\")");
-    gst_debug_set_default_threshold(GST_LEVEL_INFO);
+    //gst_debug_set_default_threshold(GST_LEVEL_INFO);
     gst_init(nullptr, nullptr);
     gstAVPipeline = std::make_unique<GstAVPipeline>(s_UnityInterfaces);
 }
