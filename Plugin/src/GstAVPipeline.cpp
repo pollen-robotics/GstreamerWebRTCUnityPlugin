@@ -624,6 +624,11 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
     {
         Debug::Log("Failed to load 'webrtc' plugin", Level::Error);
     }
+    preloaded_plugins.push_back(gst_plugin_load_by_name("webrtcdsp"));
+    if (!preloaded_plugins.back())
+    {
+        Debug::Log("Failed to load 'webrtcdsp' plugin", Level::Error);
+    }
     preloaded_plugins.push_back(gst_plugin_load_by_name("d3d11"));
     if (!preloaded_plugins.back())
     {
