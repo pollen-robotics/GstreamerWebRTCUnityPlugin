@@ -1,47 +1,53 @@
 #include "DebugLog.h"
 
+#include <sstream>
 #include <stdio.h>
 #include <string>
-#include <stdio.h>
-#include <sstream>
 
 //-------------------------------------------------------------------
-void  Debug::Log(const char* message, Level Level) {
+void Debug::Log(const char* message, Level Level)
+{
     if (callbackInstance != nullptr)
         callbackInstance(message, (int)Level, (int)strlen(message));
 }
 
-void  Debug::Log(const std::string message, Level Level) {
+void Debug::Log(const std::string message, Level Level)
+{
     const char* tmsg = message.c_str();
     if (callbackInstance != nullptr)
         callbackInstance(tmsg, (int)Level, (int)strlen(tmsg));
 }
 
-void  Debug::Log(const int message, Level Level) {
+void Debug::Log(const int message, Level Level)
+{
     std::stringstream ss;
     ss << message;
     send_log(ss, Level);
 }
 
-void  Debug::Log(const char message, Level Level) {
+void Debug::Log(const char message, Level Level)
+{
     std::stringstream ss;
     ss << message;
     send_log(ss, Level);
 }
 
-void  Debug::Log(const float message, Level Level) {
+void Debug::Log(const float message, Level Level)
+{
     std::stringstream ss;
     ss << message;
     send_log(ss, Level);
 }
 
-void  Debug::Log(const double message, Level Level) {
+void Debug::Log(const double message, Level Level)
+{
     std::stringstream ss;
     ss << message;
     send_log(ss, Level);
 }
 
-void Debug::Log(const bool message, Level Level) {
+void Debug::Log(const bool message, Level Level)
+{
     std::stringstream ss;
     if (message)
         ss << "true";
@@ -51,7 +57,8 @@ void Debug::Log(const bool message, Level Level) {
     send_log(ss, Level);
 }
 
-void Debug::send_log(const std::stringstream& ss, const Level& Level) {
+void Debug::send_log(const std::stringstream& ss, const Level& Level)
+{
     const std::string tmp = ss.str();
     const char* tmsg = tmp.c_str();
     if (callbackInstance != nullptr)
@@ -59,7 +66,5 @@ void Debug::send_log(const std::stringstream& ss, const Level& Level) {
 }
 //-------------------------------------------------------------------
 
-//Create a callback delegate
-void RegisterDebugCallback(FuncCallBack cb) {
-    callbackInstance = cb;
-}
+// Create a callback delegate
+void RegisterDebugCallback(FuncCallBack cb) { callbackInstance = cb; }

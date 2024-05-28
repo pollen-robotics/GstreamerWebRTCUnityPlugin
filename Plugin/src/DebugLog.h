@@ -1,23 +1,28 @@
 #pragma once
-#include<stdio.h>
-#include <string>
-#include <stdio.h>
 #include <sstream>
+#include <stdio.h>
+#include <stdio.h>
+#include <string>
 
 #define DLLExport __declspec(dllexport)
 
 extern "C"
 {
-    //Create a callback delegate
-    typedef void(*FuncCallBack)(const char* message, int Level, int size);
+    // Create a callback delegate
+    typedef void (*FuncCallBack)(const char* message, int Level, int size);
     static FuncCallBack callbackInstance = nullptr;
     DLLExport void RegisterDebugCallback(FuncCallBack cb);
 }
 
-//Level Enum
-enum class Level { Info, Warning, Error};
+// Level Enum
+enum class Level
+{
+    Info,
+    Warning,
+    Error
+};
 
-class  Debug
+class Debug
 {
 public:
     static void Log(const char* message, Level Level = Level::Info);
