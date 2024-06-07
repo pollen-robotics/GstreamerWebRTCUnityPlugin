@@ -19,6 +19,13 @@ extern "C"
     typedef void (*FuncCallBackChannelServiceOpen)();
     static FuncCallBackChannelServiceOpen callbackChannelServiceOpenInstance = nullptr;
     DLLExport void RegisterChannelServiceOpenCallback(FuncCallBackChannelServiceOpen cb);
+
+    typedef void (*FuncCallBackChannelData)(const uint8_t * message, int size);
+    static FuncCallBackChannelData callbackChannelServiceDataInstance = nullptr;
+    DLLExport void RegisterChannelServiceDataCallback(FuncCallBackChannelData cb);
+
+    static FuncCallBackChannelData callbackChannelStateDataInstance = nullptr;
+    DLLExport void RegisterChannelStateDataCallback(FuncCallBackChannelData cb);
 }
 
 class GstDataPipeline
@@ -32,7 +39,8 @@ private:
     static const std::string CHANNEL_SERVICE;
     static const std::string CHANNEL_REACHY_STATE;
     static const std::string CHANNEL_REACHY_COMMAND;
-    static GstWebRTCDataChannel* _channel_service;
+    static GstWebRTCDataChannel* _channel_service;    
+    static GstWebRTCDataChannel* _channel_command;
 
 
 public:
@@ -43,6 +51,7 @@ public:
     void SetOffer(const char* sdp_offer);
     void SetICECandidate(const char* candidate, int mline_index);
     void send_byte_array_channel_service(const unsigned char * data, size_t size);
+    void send_byte_array_channel_command(const unsigned char* data, size_t size);
 
 
 private:
@@ -55,6 +64,7 @@ private:
     static void on_data_channel(GstElement* webrtcbin, GstWebRTCDataChannel* channel, gpointer udata);
     static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
+    static void on_message_data_state(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_offer_set(GstPromise* promise, gpointer user_data);
     static void on_answer_created(GstPromise* promise, gpointer user_data);
     static void on_ice_gathering_state_notify(GstElement* webrtcbin, GParamSpec* pspec, gpointer user_data);

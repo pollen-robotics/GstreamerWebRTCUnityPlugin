@@ -146,11 +146,6 @@ void GstDataPipeline::on_ice_candidate(GstElement* webrtcbin, guint mline_index,
 
 void GstDataPipeline::on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
-    //GstDataPipeline* self = static_cast<GstDataPipeline*>(user_data);
-
-    // TODO: Implementer votre fonction pour traiter le message reçu
-    // self->handle_received_message(buffer);
-
     Debug::Log("Data channel message received", Level::Info);
 }
 
@@ -210,9 +205,10 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     std::string label_str = std::string(label);
     g_free(label);
 
+    Debug::Log("Received data channel : " + label_str);
+
     if (label_str == CHANNEL_SERVICE)
     {
-        Debug::Log("Received data channel : " + label_str);
         //self->_channel_service = g_object_ref(channel);        
         _channel_service = channel;
 
@@ -225,15 +221,15 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     }
     else if (starts_with(label_str,CHANNEL_REACHY_STATE))
     {
-        Debug::Log("Received data channel : " + label_str);
+        g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_state), nullptr);
     }
     else if (starts_with(label_str, CHANNEL_REACHY_COMMAND))
     {
-        Debug::Log("Received data channel : " + label_str);
+        _channel_command = channel;
     }
     else
     {
-        Debug::Log("Received unknown data channel : " + label_str, Level::Warning);
+        Debug::Log("unknown data channel : " + label_str, Level::Warning);
     }
 
 }
@@ -259,15 +255,36 @@ void GstDataPipeline::send_byte_array(GstWebRTCDataChannel* channel, const unsig
 
 void GstDataPipeline::send_byte_array_channel_service(const unsigned char* data, size_t size) 
 {
-    send_byte_array(_channel_service, data, size); 
-    //GBytes* bytes = g_bytes_new(data, size);
-    //_service_data.push(bytes);
-    //g_queue_push_tail(_service_data, bytes);
+    if (_channel_service != nullptr)
+        send_byte_array(_channel_service, data, size); 
+}
+
+void GstDataPipeline::send_byte_array_channel_command(const unsigned char* data, size_t size) 
+{
+    if (_channel_command != nullptr)
+        send_byte_array(_channel_command, data, size);
 }
 
 void GstDataPipeline::on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
     Debug::Log("Data channel service message received", Level::Info);
+    if (callbackChannelServiceDataInstance != nullptr)
+    {
+        gsize size = g_bytes_get_size(data);
+        const uint8_t* message = static_cast<uint8_t*>(const_cast<gpointer>(g_bytes_get_data(data, &size)));
+        callbackChannelServiceDataInstance(message, (int)size);
+    }
+}
+
+void GstDataPipeline::on_message_data_state(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
+{
+    Debug::Log("Data channel state message received", Level::Info);
+    if (callbackChannelStateDataInstance != nullptr)
+    {
+        gsize size = g_bytes_get_size(data);
+        const uint8_t* message = static_cast<uint8_t*>(const_cast<gpointer>(g_bytes_get_data(data, &size)));
+        callbackChannelStateDataInstance(message, (int)size);
+    }
 }
 
 GstElement* GstDataPipeline::add_webrtcbin(GstElement* pipeline)
@@ -386,9 +403,12 @@ gboolean GstDataPipeline::dumpLatencyCallback(GstDataPipeline* self)
 void RegisterICECallback(FuncCallBackICE cb) { callbackICEInstance = cb; }
 void RegisterSDPCallback(FuncCallBackSDP cb) { callbackSDPInstance = cb; }
 void RegisterChannelServiceOpenCallback(FuncCallBackChannelServiceOpen cb) { callbackChannelServiceOpenInstance = cb; }
+void RegisterChannelServiceDataCallback(FuncCallBackChannelData cb) { callbackChannelServiceDataInstance = cb; }
+void RegisterChannelStateDataCallback(FuncCallBackChannelData cb) { callbackChannelStateDataInstance = cb; }
 
 //const 
 const std::string GstDataPipeline::CHANNEL_SERVICE = "service";
 const std::string GstDataPipeline::CHANNEL_REACHY_STATE = "reachy_state";
 const std::string GstDataPipeline::CHANNEL_REACHY_COMMAND = "reachy_command";
 GstWebRTCDataChannel* GstDataPipeline::_channel_service = nullptr;
+GstWebRTCDataChannel* GstDataPipeline::_channel_command = nullptr;

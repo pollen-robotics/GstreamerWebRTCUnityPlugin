@@ -59,6 +59,11 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelServi
     gstDataPipeline->send_byte_array_channel_service(data, size);
 }
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelCommand(const unsigned char* data, size_t size)
+{
+    gstDataPipeline->send_byte_array_channel_command(data, size);
+}
+
 /*
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTexture(void*
 textureHandle, int w, int h)
