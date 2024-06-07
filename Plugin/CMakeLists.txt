@@ -12,6 +12,7 @@ set(GST_ARCH_INCLUDE_DIR ${GST_LIBRARY_DIRS}/gstreamer-1.0/include)
 include_directories(${GST_INCLUDE_DIRS} ${GST_ARCH_INCLUDE_DIR})
 
 add_definitions(${GST_CFLAGS_OTHER})
+add_definitions(-DGST_USE_UNSTABLE_API)
 
 set(SOURCE_FILES
     src/RenderingPlugin.cpp
@@ -19,6 +20,8 @@ set(SOURCE_FILES
 	src/DebugLog.h
 	src/GstAVPipeline.cpp
 	src/GstAVPipeline.h
+	src/GstDataPipeline.cpp
+	src/GstDataPipeline.h
 	
 	src/RenderAPI.h
 	src/RenderAPI.cpp
@@ -40,7 +43,7 @@ link_directories(${GST_LIBRARY_DIRS})
 
 add_library(UnityGStreamerPlugin SHARED ${SOURCE_FILES})
 
-target_link_libraries(UnityGStreamerPlugin ${GST_LIBRARIES} gstd3d11-1.0 gstapp-1.0 gstvideo-1.0)
+target_link_libraries(UnityGStreamerPlugin ${GST_LIBRARIES} gstd3d11-1.0 gstapp-1.0 gstvideo-1.0 gstwebrtc-1.0 gstsdp-1.0)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(TARGET_ARCH "x86_64")

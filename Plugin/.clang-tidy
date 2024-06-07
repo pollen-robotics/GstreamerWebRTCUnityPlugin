@@ -1,0 +1,41 @@
+Checks: '
+-*,
+bugprone-*,
+cppcoreguidelines-*,
+google-readability-braces-around-statements,
+google-build-using-namespace,
+misc-unused-parameters,
+modernize-*,
+performance-*,
+readability-*,
+'
+
+HeaderFilterRegex: 'source/*/.*'
+
+WarningsAsErrors: '*'
+
+FormatStyle: file
+
+CheckOptions:
+  - key:    readability-identifier-length.MinimumVariableNameLength
+    value:  1
+  - key:    readability-identifier-length.MinimumParameterNameLength
+    value:  1
+  - key:    readability-identifier-length.MinimumLoopCounterNameLength
+    value:  1
+  - key:    readability-function-size.LineThreshold
+    value:  130
+  - key:    readability-function-size.StatementThreshold
+    value:  110
+  - key:    readability-function-size.ParameterThreshold
+    value:  6
+  - key:    readability-function-size.NestingThreshold
+    value:  7
+  - key:    readability-function-size.VariableThreshold
+    value:  35
+  - key:    readability-function-cognitive-complexity.Threshold
+    value:  60
+  - key:    bugprone-easily-swappable-parameters.MinimumLength
+    value:  4
+  - key:    bugprone-easily-swappable-parameters.ModelImplicitConversions
+    value:  false

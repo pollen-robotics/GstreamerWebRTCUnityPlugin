@@ -6,8 +6,10 @@
 #include <assert.h>
 
 #include "GstAVPipeline.h"
+#include "GstDataPipeline.h"
 
 static std::unique_ptr<GstAVPipeline> gstAVPipeline = nullptr;
+static std::unique_ptr<GstDataPipeline> gstDataPipeline = nullptr;
 static IUnityInterfaces* s_UnityInterfaces = NULL;
 static IUnityGraphics* s_Graphics = NULL;
 
@@ -34,6 +36,28 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* 
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline() { gstAVPipeline->DestroyPipeline(); }
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyDataPipeline() { gstDataPipeline->DestroyPipeline(); }
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDataPipeline()
+{
+    gstDataPipeline->CreatePipeline();
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetSDPOffer(const char* sdp_offer)
+{
+    gstDataPipeline->SetOffer(sdp_offer);
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetICECandidate(const char* candidate, int mline_index)
+{
+    gstDataPipeline->SetICECandidate(candidate, mline_index);
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelService(const unsigned char * data, size_t size)
+{
+    gstDataPipeline->send_byte_array_channel_service(data, size);
+}
 
 /*
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTexture(void*
@@ -65,19 +89,21 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
     OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 
-    //SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
+    SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
     // SetEnvironmentVariable("GST_DEBUG", "h264decoder:6");
     // SetEnvironmentVariable("GST_TRACERS", "buffer - lateness(file =
     // \"buffer_lateness.log\")");
-    //gst_debug_set_default_threshold(GST_LEVEL_INFO);
+    gst_debug_set_default_threshold(GST_LEVEL_DEBUG);
     gst_init(nullptr, nullptr);
     gstAVPipeline = std::make_unique<GstAVPipeline>(s_UnityInterfaces);
+    gstDataPipeline = std::make_unique<GstDataPipeline>();
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 {
     s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
     gstAVPipeline.reset();
+    gstDataPipeline.reset();
     gst_deinit();
 }
 
