@@ -42,7 +42,7 @@ void GstDataPipeline::DestroyPipeline()
         thread_ = nullptr;
     }
 
-    /* if (_pipeline != nullptr)
+     if (_pipeline != nullptr)
     {
         Debug::Log("GstDataPipeline pipeline released", Level::Info);
         gst_object_unref(_pipeline);
@@ -51,7 +51,7 @@ void GstDataPipeline::DestroyPipeline()
     else
     {
         Debug::Log("GstDataPipeline pipeline already released", Level::Warning);
-    }*/
+    }
 }
 
 void GstDataPipeline::SetOffer(const char* sdp_offer) 
@@ -82,9 +82,6 @@ void GstDataPipeline::SetICECandidate(const char* candidate, int mline_index)
 
 void GstDataPipeline::on_offer_set(GstPromise* promise, gpointer user_data)
 {
-    Debug::Log("traiter offer");
-    //gst_promise_unref(promise);
-    //GstPromise* promise = GST_PROMISE(source_object);
     g_assert(gst_promise_wait(promise) == GST_PROMISE_RESULT_REPLIED);
 
     GstElement* webrtc = GST_ELEMENT(user_data);
@@ -116,17 +113,11 @@ void GstDataPipeline::on_answer_created(GstPromise* promise, gpointer user_data)
     if (callbackICEInstance != nullptr)
     {
         gchar* desc = gst_sdp_message_as_text(answer->sdp);
-        //Debug::Log(desc);
         callbackSDPInstance(desc, (int)strlen(desc));
         g_free(desc);
     }
 
     gst_webrtc_session_description_free(answer);
-
-    // Assurez-vous d'implémenter la fonction make_send_sdp()
-    //make_send_sdp(answer, "answer", session_id);
-
-    //gst_structure_free(reply);
 }
 
 void GstDataPipeline::on_ice_candidate(GstElement* webrtcbin, guint mline_index, gchararray candidate, gpointer user_data)
@@ -144,12 +135,12 @@ void GstDataPipeline::on_ice_candidate(GstElement* webrtcbin, guint mline_index,
 }
 
 
-void GstDataPipeline::on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
+/* void GstDataPipeline::on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
     Debug::Log("Data channel message received", Level::Info);
-}
+}*/
 
-void GstDataPipeline::add_data_channel(GstElement* webrtcbin)
+/* void GstDataPipeline::add_data_channel(GstElement* webrtcbin)
 {
     const gchar* label = "service";
     GstStructure* options = gst_structure_new_empty("options");
@@ -168,7 +159,7 @@ void GstDataPipeline::add_data_channel(GstElement* webrtcbin)
     }
 
     gst_structure_free(options);
-}
+}*/
 
 
 void GstDataPipeline::on_ice_gathering_state_notify(GstElement* webrtcbin, GParamSpec* pspec, gpointer user_data)
@@ -240,16 +231,7 @@ void GstDataPipeline::send_byte_array(GstWebRTCDataChannel* channel, const unsig
     g_assert(data != nullptr);
     GBytes* bytes = g_bytes_new(data, size);
 
-    //g_signal_emit_by_name(channel, "send-data", bytes);
-   // g_signal_emit_by_name(_channel_service, "send-string", std::string("test"), nullptr);
     gst_webrtc_data_channel_send_data(channel, bytes);
-    /* GError* error = nullptr;
-    gboolean success = gst_webrtc_data_channel_send_data_full(channel, bytes, &error);
-    if (!success)
-    {
-        // Gérer l'erreur
-        g_error_free(error);
-    }*/
     g_bytes_unref(bytes);
 }
 
@@ -267,7 +249,7 @@ void GstDataPipeline::send_byte_array_channel_command(const unsigned char* data,
 
 void GstDataPipeline::on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
-    Debug::Log("Data channel service message received", Level::Info);
+    //Debug::Log("Data channel service message received", Level::Info);
     if (callbackChannelServiceDataInstance != nullptr)
     {
         gsize size = g_bytes_get_size(data);
@@ -278,7 +260,7 @@ void GstDataPipeline::on_message_data_service(GstWebRTCDataChannel* channel, GBy
 
 void GstDataPipeline::on_message_data_state(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
-    Debug::Log("Data channel state message received", Level::Info);
+    //Debug::Log("Data channel state message received", Level::Info);
     if (callbackChannelStateDataInstance != nullptr)
     {
         gsize size = g_bytes_get_size(data);
@@ -348,11 +330,9 @@ gboolean GstDataPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data
             gchar* dbg;
 
             gst_message_parse_error(msg, &err, &dbg);
-            // gst_printerrln("ERROR %s", err->message);
             Debug::Log(err->message, Level::Error);
             if (dbg != nullptr)
                 Debug::Log(dbg);
-            // gst_printerrln("ERROR debug information: %s", dbg);
             g_clear_error(&err);
             g_free(dbg);
             g_main_loop_quit(self->main_loop_);

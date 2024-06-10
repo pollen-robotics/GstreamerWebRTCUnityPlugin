@@ -60,9 +60,9 @@ private:
     static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
     static gboolean dumpLatencyCallback(GstDataPipeline* self);
     static void on_ice_candidate(GstElement* webrtcbin, guint mline_index, gchararray candidate, gpointer user_data);
-    void add_data_channel(GstElement* webrtcbin);
+    //void add_data_channel(GstElement* webrtcbin);
     static void on_data_channel(GstElement* webrtcbin, GstWebRTCDataChannel* channel, gpointer udata);
-    static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
+    //static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_state(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_offer_set(GstPromise* promise, gpointer user_data);
