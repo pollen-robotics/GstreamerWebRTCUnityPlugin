@@ -20,20 +20,9 @@ set(SOURCE_FILES
 	src/GstAVPipeline.cpp
 	src/GstAVPipeline.h
 	
-	src/RenderAPI.h
-	src/RenderAPI.cpp
-	src/RenderAPI_D3D11.cpp
-	#src/RenderAPI_OpenGLCoreES.cpp
-	
 	src/Unity/IUnityGraphics.h
 	src/Unity/IUnityGraphicsD3D11.h
 	src/Unity/IUnityInterface.h
-	src/Unity/IUnityRenderingExtensions.h
-	
-	
-	#src/gl3w/gl3w.c
-	#src/gl3w/gl3w.h
-	#src/gl3w/glcorearb.h
 )
 
 link_directories(${GST_LIBRARY_DIRS})

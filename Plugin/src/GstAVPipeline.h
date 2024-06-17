@@ -59,7 +59,6 @@ private:
 
     static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
-    static bool find_decoder(gint64 luid, std::string& feature_name);
     static gboolean dumpLatencyCallback(GstAVPipeline* self);
 
     static gpointer main_loop_func(gpointer data);
