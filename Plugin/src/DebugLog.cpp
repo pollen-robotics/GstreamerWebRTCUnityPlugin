@@ -2,7 +2,7 @@
 
 #include <sstream>
 #include <stdio.h>
-#include <string>
+#include <string.h>
 
 //-------------------------------------------------------------------
 void Debug::Log(const char* message, Level Level)

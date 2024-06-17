@@ -13,6 +13,28 @@ include_directories(${GST_INCLUDE_DIRS} ${GST_ARCH_INCLUDE_DIR})
 
 add_definitions(${GST_CFLAGS_OTHER})
 
+# Check the target platform
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    # Windows-specific code or libraries
+    set(SOURCE_FILES_WIN
+        src/GstAVPipelineD3D11.cpp
+        src/GstAVPipelineD3D11.h
+    )
+
+    set(GST_LIBRARIES_WIN
+        gstd3d11-1.0
+    )
+
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")	
+	add_definitions(-DUNITY_LINUX=1)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    # Android-specific code or libraries
+    # ...
+else()
+    # Unsupported platform
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+endif()
+
 set(SOURCE_FILES
     src/RenderingPlugin.cpp
 	src/DebugLog.cpp
@@ -23,13 +45,16 @@ set(SOURCE_FILES
 	src/Unity/IUnityGraphics.h
 	src/Unity/IUnityGraphicsD3D11.h
 	src/Unity/IUnityInterface.h
+    src/Unity/PlatformBase.h
+
+    ${SOURCES_FILES_WIN}
 )
 
 link_directories(${GST_LIBRARY_DIRS})
 
 add_library(UnityGStreamerPlugin SHARED ${SOURCE_FILES})
 
-target_link_libraries(UnityGStreamerPlugin ${GST_LIBRARIES} gstd3d11-1.0 gstapp-1.0 gstvideo-1.0)
+target_link_libraries(UnityGStreamerPlugin ${GST_LIBRARIES} gstapp-1.0 gstvideo-1.0)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(TARGET_ARCH "x86_64")
@@ -41,4 +66,4 @@ add_custom_command(TARGET UnityGStreamerPlugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
             $<TARGET_FILE:UnityGStreamerPlugin>
             ${CMAKE_SOURCE_DIR}/../UnityProject/Packages/com.pollenrobotics.gstreamerwebrtc/Runtime/Plugins/${TARGET_ARCH}
-    COMMENT "Copying UnityGStreamerPlugin.dll to destination directory")
+    COMMENT "Copying UnityGStreamerPlugin library to destination directory")

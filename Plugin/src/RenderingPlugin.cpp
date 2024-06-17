@@ -1,6 +1,8 @@
-#include "Unity/IUnityGraphics.h"
-#include <assert.h>
 #include "GstAVPipeline.h"
+#include "Unity/IUnityGraphics.h"
+#include "Unity/PlatformBase.h"
+// #include <assert.h>
+#include <memory>
 
 static std::unique_ptr<GstAVPipeline> gstAVPipeline = nullptr;
 
@@ -23,7 +25,7 @@ extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API GetTexturePtr(bool l
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* texPtr)
 {
-    gstAVPipeline->ReleaseTexture((ID3D11Texture2D*)texPtr);
+    gstAVPipeline->ReleaseTexture(texPtr);
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline() { gstAVPipeline->DestroyPipeline(); }
@@ -31,11 +33,14 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline() { g
 // --------------------------------------------------------------------------
 // UnitySetInterfaces
 
-
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
     gst_init(nullptr, nullptr);
+#if UNITY_WIN
     gstAVPipeline = std::make_unique<GstAVPipeline>(unityInterfaces);
+#elif UNITY_LINUX
+    // todo
+#endif
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
@@ -43,7 +48,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
     gstAVPipeline.reset();
     gst_deinit();
 }
-
 
 // --------------------------------------------------------------------------
 // OnRenderEvent

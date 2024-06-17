@@ -1,17 +1,15 @@
 #pragma once
+#include "Unity/IUnityInterface.h"
 #include <sstream>
 #include <stdio.h>
-#include <stdio.h>
 #include <string>
-
-#define DLLExport __declspec(dllexport)
 
 extern "C"
 {
     // Create a callback delegate
     typedef void (*FuncCallBack)(const char* message, int Level, int size);
     static FuncCallBack callbackInstance = nullptr;
-    DLLExport void RegisterDebugCallback(FuncCallBack cb);
+    void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RegisterDebugCallback(FuncCallBack cb);
 }
 
 // Level Enum
