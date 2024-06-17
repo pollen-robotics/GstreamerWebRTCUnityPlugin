@@ -94,7 +94,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
     OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 
-    SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
+    //SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
     // SetEnvironmentVariable("GST_DEBUG", "h264decoder:6");
     // SetEnvironmentVariable("GST_TRACERS", "buffer - lateness(file =
     // \"buffer_lateness.log\")");
