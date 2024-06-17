@@ -130,7 +130,6 @@ GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_da
 
 void GstAVPipeline::Draw(bool left)
 {
-    // Debug::Log("drawing");
     AppData* data;
     if (left)
         data = _leftData.get();
@@ -688,7 +687,6 @@ gboolean GstAVPipeline::dumpLatencyCallback(GstAVPipeline* self)
             gboolean live;
             GstClockTime min_latency, max_latency;
             gst_query_parse_latency(query, &live, &min_latency, &max_latency);
-            // Log or std::cout your latency here
             std::string msg = "Pipeline latency: live=" + std::to_string(live) + ", min=" + std::to_string(min_latency) +
                               ", max=" + std::to_string(max_latency);
             Debug::Log(msg);
@@ -765,18 +763,6 @@ void GstAVPipeline::CreateDevice()
         /* This device will be used by our pipeline */
         _device = gst_d3d11_device_new_for_adapter_luid(luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT);
         g_assert(_device);
-
-        /*if (!find_decoder(luid, decoder_factory)) {
-                gst_println("GPU does not support H.264 decoding");
-                decoder_factory = "avdec_h264";
-        }*/
-
-        // ComPtr <ID3D10Multithread> multi_thread;
-        /*hr = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice()->QueryInterface(IID_PPV_ARGS(&multi_thread));
-        g_assert(SUCCEEDED(hr));
-
-        multi_thread->SetMultithreadProtected(TRUE);
-        multi_thread->Release();*/
     }
     else
     {
@@ -798,7 +784,6 @@ void GstAVPipeline::DestroyPipeline()
     if (_pipeline != nullptr)
     {
         Debug::Log("GstAVPipeline pipeline released", Level::Info);
-        // gst_element_set_state(_pipeline, GstState::GST_STATE_NULL);
         gst_object_unref(_pipeline);
         _pipeline = nullptr;
     }
@@ -833,61 +818,6 @@ ID3D11Texture2D* GstAVPipeline::GetTexturePtr(bool left)
         return _rightData->texture.Get();
 }
 
-bool GstAVPipeline::find_decoder(gint64 luid, std::string& feature_name)
-{
-    GList* features;
-    GList* iter;
-
-    /* Load features of d3d11 plugin */
-    features = gst_registry_get_feature_list_by_plugin(gst_registry_get(), "d3d11");
-
-    if (!features)
-        return false;
-
-    for (iter = features; iter; iter = g_list_next(iter))
-    {
-        GstPluginFeature* f = GST_PLUGIN_FEATURE(iter->data);
-        GstElementFactory* factory;
-        const gchar* name;
-        GstElement* element;
-        gint64 adapter_luid;
-
-        if (!GST_IS_ELEMENT_FACTORY(f))
-            continue;
-
-        factory = GST_ELEMENT_FACTORY(f);
-        if (!gst_element_factory_list_is_type(factory, GST_ELEMENT_FACTORY_TYPE_DECODER))
-            continue;
-
-        name = gst_plugin_feature_get_name(f);
-        if (!g_strrstr(name, "h264"))
-            continue;
-
-        element = gst_element_factory_create(factory, nullptr);
-        /* unexpected */
-        if (!element)
-            continue;
-
-        /* query adapter-luid associated with this decoder */
-        g_object_get(element, "adapter-luid", &adapter_luid, nullptr);
-        gst_object_unref(element);
-
-        /* element object can be directly used in pipeline, but this example
-         * demonstrates a way of plugin enumeration */
-        if (adapter_luid == luid)
-        {
-            feature_name = name;
-            break;
-        }
-    }
-
-    gst_plugin_feature_list_free(features);
-
-    if (feature_name.empty())
-        return false;
-
-    return true;
-}
 
 gpointer GstAVPipeline::main_loop_func(gpointer data)
 {

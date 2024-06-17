@@ -3,7 +3,6 @@
 #include "GstAVPipeline.h"
 
 static std::unique_ptr<GstAVPipeline> gstAVPipeline = nullptr;
-static IUnityInterfaces* s_UnityInterfaces = NULL;
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice() { gstAVPipeline->CreateDevice(); }
 
@@ -35,10 +34,8 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline() { g
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
-    s_UnityInterfaces = unityInterfaces;
-
     gst_init(nullptr, nullptr);
-    gstAVPipeline = std::make_unique<GstAVPipeline>(s_UnityInterfaces);
+    gstAVPipeline = std::make_unique<GstAVPipeline>(unityInterfaces);
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
