@@ -20,9 +20,8 @@ void GstDataPipeline::CreatePipeline()
     Debug::Log("GstDataPipeline create pipeline", Level::Info);
     _pipeline = gst_pipeline_new("Plugin Data Pipeline");
 
-    _webrtcbin = add_webrtcbin(_pipeline);
+    _webrtcbin = add_webrtcbin();
     auto state = gst_element_set_state(_pipeline, GstState::GST_STATE_READY);    
-    //add_data_channel(_webrtcbin);
 
     thread_ = g_thread_new("bus thread", main_loop_func, this);
     if (!thread_)
@@ -200,8 +199,8 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
 
     if (label_str == CHANNEL_SERVICE)
     {
-        //self->_channel_service = g_object_ref(channel);        
-        _channel_service = channel;
+        self->_channel_service = channel;        
+        //_channel_service = channel;
 
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_service), nullptr);
 
@@ -216,7 +215,7 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     }
     else if (starts_with(label_str, CHANNEL_REACHY_COMMAND))
     {
-        _channel_command = channel;
+        self->_channel_command = channel;
     }
     else
     {
@@ -269,7 +268,7 @@ void GstDataPipeline::on_message_data_state(GstWebRTCDataChannel* channel, GByte
     }
 }
 
-GstElement* GstDataPipeline::add_webrtcbin(GstElement* pipeline)
+GstElement* GstDataPipeline::add_webrtcbin()
 {
     GstElement* webrtcbin = gst_element_factory_make("webrtcbin", nullptr);
     if (!webrtcbin)
@@ -279,11 +278,11 @@ GstElement* GstDataPipeline::add_webrtcbin(GstElement* pipeline)
     }
 
     g_object_set(G_OBJECT(webrtcbin), "bundle-policy", GST_WEBRTC_BUNDLE_POLICY_MAX_BUNDLE, nullptr);
-    g_signal_connect(webrtcbin, "on-ice-candidate", G_CALLBACK(on_ice_candidate), pipeline);
-    g_signal_connect(webrtcbin, "on-data-channel", G_CALLBACK(on_data_channel), pipeline);
+    g_signal_connect(webrtcbin, "on-ice-candidate", G_CALLBACK(on_ice_candidate), nullptr);
+    g_signal_connect(webrtcbin, "on-data-channel", G_CALLBACK(on_data_channel), this);
     g_signal_connect(webrtcbin, "notify::ice-gathering-state", G_CALLBACK(on_ice_gathering_state_notify), nullptr);
 
-    gst_bin_add(GST_BIN(pipeline), webrtcbin);
+    gst_bin_add(GST_BIN(this->_pipeline), webrtcbin);
     return webrtcbin;
 }
 
@@ -390,5 +389,3 @@ void RegisterChannelStateDataCallback(FuncCallBackChannelData cb) { callbackChan
 const std::string GstDataPipeline::CHANNEL_SERVICE = "service";
 const std::string GstDataPipeline::CHANNEL_REACHY_STATE = "reachy_state";
 const std::string GstDataPipeline::CHANNEL_REACHY_COMMAND = "reachy_command";
-GstWebRTCDataChannel* GstDataPipeline::_channel_service = nullptr;
-GstWebRTCDataChannel* GstDataPipeline::_channel_command = nullptr;

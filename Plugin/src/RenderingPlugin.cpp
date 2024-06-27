@@ -94,11 +94,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
     OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 
-    //SetEnvironmentVariable("GST_DEBUG_FILE", "Logs\\gstreamer.log");
-    // SetEnvironmentVariable("GST_DEBUG", "h264decoder:6");
-    // SetEnvironmentVariable("GST_TRACERS", "buffer - lateness(file =
-    // \"buffer_lateness.log\")");
-    gst_debug_set_default_threshold(GST_LEVEL_DEBUG);
     gst_init(nullptr, nullptr);
     gstAVPipeline = std::make_unique<GstAVPipeline>(s_UnityInterfaces);
     gstDataPipeline = std::make_unique<GstDataPipeline>();

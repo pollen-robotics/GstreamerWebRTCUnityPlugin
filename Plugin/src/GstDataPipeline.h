@@ -39,8 +39,8 @@ private:
     static const std::string CHANNEL_SERVICE;
     static const std::string CHANNEL_REACHY_STATE;
     static const std::string CHANNEL_REACHY_COMMAND;
-    static GstWebRTCDataChannel* _channel_service;    
-    static GstWebRTCDataChannel* _channel_command;
+    GstWebRTCDataChannel* _channel_service = nullptr;    
+    GstWebRTCDataChannel* _channel_command = nullptr;
 
 
 public:
@@ -55,12 +55,11 @@ public:
 
 
 private:
-    static GstElement* add_webrtcbin(GstElement* pipeline);
+    GstElement* add_webrtcbin();
     static gpointer main_loop_func(gpointer data);
     static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
     static gboolean dumpLatencyCallback(GstDataPipeline* self);
     static void on_ice_candidate(GstElement* webrtcbin, guint mline_index, gchararray candidate, gpointer user_data);
-    //void add_data_channel(GstElement* webrtcbin);
     static void on_data_channel(GstElement* webrtcbin, GstWebRTCDataChannel* channel, gpointer udata);
     //static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);

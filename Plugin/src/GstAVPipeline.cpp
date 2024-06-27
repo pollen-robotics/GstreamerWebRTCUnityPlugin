@@ -566,16 +566,16 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
         GstElement* audioconvert = add_audioconvert(avpipeline->_pipeline);
         GstElement* audioresample = add_audioresample(avpipeline->_pipeline);
         GstElement* wasapi2sink = add_wasapi2sink(avpipeline->_pipeline);
-        GstElement* tee = add_tee(avpipeline->_pipeline);
+       // GstElement* tee = add_tee(avpipeline->_pipeline);
 
-        if (!gst_element_link_many(rtpopusdepay, opusdec, tee, queue, audioconvert, audioresample, wasapi2sink, nullptr))
+        if (!gst_element_link_many(rtpopusdepay, opusdec, /* tee,*/ queue, audioconvert, audioresample, wasapi2sink, nullptr))
         {
             Debug::Log("Audio elements could not be linked.", Level::Error);
         }
 
-        GstElement* queue2 = add_queue(avpipeline->_pipeline);
+        /* GstElement* queue2 = add_queue(avpipeline->_pipeline);
         if (!gst_element_link_many(tee, queue2, avpipeline->audiomixer, nullptr))
-            Debug::Log("Received audio could not be linked to audiomixer.", Level::Error);
+            Debug::Log("Received audio could not be linked to audiomixer.", Level::Error);*/
 
         GstPad* sinkpad = gst_element_get_static_pad(rtpopusdepay, "sink");
         if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK)
@@ -586,13 +586,13 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 
         gst_element_sync_state_with_parent(rtpopusdepay);
         gst_element_sync_state_with_parent(opusdec);
-        gst_element_sync_state_with_parent(tee);
+        //gst_element_sync_state_with_parent(tee);
         gst_element_sync_state_with_parent(queue);
         gst_element_sync_state_with_parent(audioconvert);
         gst_element_sync_state_with_parent(audioresample);
         gst_element_sync_state_with_parent(wasapi2sink);
-        gst_element_sync_state_with_parent(queue2);
-        gst_element_sync_state_with_parent(avpipeline->audiomixer);
+        //gst_element_sync_state_with_parent(queue2);
+        //gst_element_sync_state_with_parent(avpipeline->audiomixer);
     }
     g_free(pad_name);
 }
@@ -600,7 +600,7 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
 {
     Debug::Log("Configure webrtcbin", Level::Info);
-    g_object_set(webrtcbin, "latency", 50, nullptr);
+    g_object_set(webrtcbin, "latency", 10, nullptr);
 }
 
 void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
@@ -721,7 +721,7 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
         Debug::Log("Audio sending elements could not be linked.", Level::Error);
     }
 
-    GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
+    /* GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
     audiomixer = add_audiomixer(_pipeline);
     GstElement* audioconvert2 = add_audioconvert(_pipeline);
     GstElement* audioresample = add_audioresample(_pipeline);
@@ -731,7 +731,7 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
     if (!gst_element_link_many(audiotestsrc, audiomixer, audioresample, webrtcechoprobe, fakesink, nullptr))
     {
         Debug::Log("Audio dsp elements could not be linked.", Level::Error);
-    }
+    }*/
 
     // g_timeout_add_seconds(3, G_SOURCE_FUNC(GstAVPipeline::dumpLatencyCallback), this);
 
