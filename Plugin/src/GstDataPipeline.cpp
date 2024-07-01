@@ -213,6 +213,10 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     {
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_state), nullptr);
     }
+    else if (starts_with(label_str, CHANNEL_REACHY_AUDIT))
+    {
+        g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_audit), nullptr);
+    }
     else if (starts_with(label_str, CHANNEL_REACHY_COMMAND))
     {
         self->_channel_command = channel;
@@ -265,6 +269,17 @@ void GstDataPipeline::on_message_data_state(GstWebRTCDataChannel* channel, GByte
         gsize size = g_bytes_get_size(data);
         const uint8_t* message = static_cast<uint8_t*>(const_cast<gpointer>(g_bytes_get_data(data, &size)));
         callbackChannelStateDataInstance(message, (int)size);
+    }
+}
+
+void GstDataPipeline::on_message_data_audit(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
+{
+    // Debug::Log("Data channel audit message received", Level::Info);
+    if (callbackChannelAuditDataInstance != nullptr)
+    {
+        gsize size = g_bytes_get_size(data);
+        const uint8_t* message = static_cast<uint8_t*>(const_cast<gpointer>(g_bytes_get_data(data, &size)));
+        callbackChannelAuditDataInstance(message, (int)size);
     }
 }
 
@@ -384,8 +399,10 @@ void RegisterSDPCallback(FuncCallBackSDP cb) { callbackSDPInstance = cb; }
 void RegisterChannelServiceOpenCallback(FuncCallBackChannelServiceOpen cb) { callbackChannelServiceOpenInstance = cb; }
 void RegisterChannelServiceDataCallback(FuncCallBackChannelData cb) { callbackChannelServiceDataInstance = cb; }
 void RegisterChannelStateDataCallback(FuncCallBackChannelData cb) { callbackChannelStateDataInstance = cb; }
+void RegisterChannelStateAuditCallback(FuncCallBackChannelData cb) { callbackChannelAuditDataInstance = cb; }
 
 //const 
 const std::string GstDataPipeline::CHANNEL_SERVICE = "service";
 const std::string GstDataPipeline::CHANNEL_REACHY_STATE = "reachy_state";
 const std::string GstDataPipeline::CHANNEL_REACHY_COMMAND = "reachy_command";
+const std::string GstDataPipeline::CHANNEL_REACHY_AUDIT = "reachy_audit";
