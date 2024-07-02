@@ -93,7 +93,7 @@ namespace GstreamerWebRTC
 #else
         [DllImport("UnityGStreamerPlugin")]
 #endif
-        static extern void RegisterChannelStateDataCallback(channelServiceDataCallback cb);
+        static extern void RegisterChannelStateDataCallback(channelStateDataCallback cb);
         delegate void channelStateDataCallback(IntPtr data, int size_data);
 
         private string _signallingServerURL;

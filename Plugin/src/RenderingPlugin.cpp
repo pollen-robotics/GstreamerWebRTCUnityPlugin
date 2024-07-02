@@ -64,7 +64,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelComma
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
     gst_init(nullptr, nullptr);
-    gstAVPipeline = std::make_unique<GstAVPipeline>(s_UnityInterfaces);
+    gstAVPipeline = std::make_unique<GstAVPipeline>(unityInterfaces);
     gstDataPipeline = std::make_unique<GstDataPipeline>();
 }
 
