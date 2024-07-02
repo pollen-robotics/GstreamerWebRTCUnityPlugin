@@ -399,7 +399,7 @@ void RegisterSDPCallback(FuncCallBackSDP cb) { callbackSDPInstance = cb; }
 void RegisterChannelServiceOpenCallback(FuncCallBackChannelServiceOpen cb) { callbackChannelServiceOpenInstance = cb; }
 void RegisterChannelServiceDataCallback(FuncCallBackChannelData cb) { callbackChannelServiceDataInstance = cb; }
 void RegisterChannelStateDataCallback(FuncCallBackChannelData cb) { callbackChannelStateDataInstance = cb; }
-void RegisterChannelStateAuditCallback(FuncCallBackChannelData cb) { callbackChannelAuditDataInstance = cb; }
+void RegisterChannelAuditDataCallback(FuncCallBackChannelData cb) { callbackChannelAuditDataInstance = cb; }
 
 //const 
 const std::string GstDataPipeline::CHANNEL_SERVICE = "service";

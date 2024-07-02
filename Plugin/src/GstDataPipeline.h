@@ -28,7 +28,7 @@ extern "C"
     DLLExport void RegisterChannelStateDataCallback(FuncCallBackChannelData cb);
 
     static FuncCallBackChannelData callbackChannelAuditDataInstance = nullptr;
-    DLLExport void RegisterChannelStateDataCallback(FuncCallBackChannelData cb);
+    DLLExport void RegisterChannelAuditDataCallback(FuncCallBackChannelData cb);
 }
 
 class GstDataPipeline
