@@ -13,7 +13,7 @@ class GstAVPipeline
 
 private:
     std::vector<GstPlugin*> preloaded_plugins;
-    GstElement* audiomixer = nullptr;
+    //GstElement* audiomixer = nullptr;
 
     GstElement* _pipeline = nullptr;
     GstD3D11Device* _device = nullptr;
