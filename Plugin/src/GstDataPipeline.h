@@ -26,6 +26,9 @@ extern "C"
 
     static FuncCallBackChannelData callbackChannelStateDataInstance = nullptr;
     DLLExport void RegisterChannelStateDataCallback(FuncCallBackChannelData cb);
+
+    static FuncCallBackChannelData callbackChannelAuditDataInstance = nullptr;
+    DLLExport void RegisterChannelAuditDataCallback(FuncCallBackChannelData cb);
 }
 
 class GstDataPipeline
@@ -39,8 +42,10 @@ private:
     static const std::string CHANNEL_SERVICE;
     static const std::string CHANNEL_REACHY_STATE;
     static const std::string CHANNEL_REACHY_COMMAND;
+    static const std::string CHANNEL_REACHY_AUDIT;
     GstWebRTCDataChannel* _channel_service = nullptr;    
     GstWebRTCDataChannel* _channel_command = nullptr;
+    GstWebRTCDataChannel* _channel_audit = nullptr;
 
 
 public:
@@ -53,7 +58,6 @@ public:
     void send_byte_array_channel_service(const unsigned char * data, size_t size);
     void send_byte_array_channel_command(const unsigned char* data, size_t size);
 
-
 private:
     GstElement* add_webrtcbin();
     static gpointer main_loop_func(gpointer data);
@@ -64,6 +68,7 @@ private:
     //static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_state(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
+    static void on_message_data_audit(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_offer_set(GstPromise* promise, gpointer user_data);
     static void on_answer_created(GstPromise* promise, gpointer user_data);
     static void on_ice_gathering_state_notify(GstElement* webrtcbin, GParamSpec* pspec, gpointer user_data);
