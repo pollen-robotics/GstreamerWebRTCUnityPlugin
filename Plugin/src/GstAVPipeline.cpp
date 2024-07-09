@@ -777,7 +777,9 @@ void GstAVPipeline::DestroyPipeline()
 
     if (thread_ != nullptr)
     {
+        Debug::Log("Wait for av thread to close ...", Level::Info);
         g_thread_join(thread_);
+        g_thread_unref(thread_);
         thread_ = nullptr;
     }
 
@@ -886,7 +888,7 @@ gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
             break;
         }
         default:
-            Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
+            //Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
             break;
     }
 
