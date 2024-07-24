@@ -226,7 +226,7 @@ GstElement* GstAVPipeline::add_appsink(GstElement* pipeline)
     }
 
     GstCaps* caps = gst_caps_from_string("video/x-raw(memory:D3D11Memory),format=RGBA");
-    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 3, nullptr);
+    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, "processing-deadline", 0, nullptr);
     gst_caps_unref(caps);
 
     gst_bin_add(GST_BIN(pipeline), appsink);
@@ -306,7 +306,7 @@ GstElement* GstAVPipeline::add_wasapi2sink(GstElement* pipeline)
         Debug::Log("Failed to create wasapi2sink", Level::Error);
         return nullptr;
     }
-    g_object_set(wasapi2sink, "low-latency", true, "provide-clock", false, nullptr);
+    g_object_set(wasapi2sink, "low-latency", true, "provide-clock", false, "processing-deadline", 0, nullptr);
 
     gst_bin_add(GST_BIN(pipeline), wasapi2sink);
     return wasapi2sink;
@@ -390,6 +390,55 @@ GstElement* GstAVPipeline::add_audio_caps_capsfilter(GstElement* pipeline)
     return audio_caps_capsfilter;
 }
 
+void GstAVPipeline::consumer_added_callback(GstElement* consumer_id, gchararray webrtcbin, GstElement* arg1, gpointer udata)
+{
+    Debug::Log("Consumer added");
+    GstIterator* sinks = gst_bin_iterate_sinks(GST_BIN(consumer_id));
+    gboolean done = FALSE;
+    while (!done)
+    {
+        GValue item = G_VALUE_INIT;
+        switch (gst_iterator_next(sinks, &item))
+        {
+            case GST_ITERATOR_OK:
+            {
+                GstElement* sink = GST_ELEMENT(g_value_get_object(&item));
+
+                // Log a message indicating that the processing deadline is being set for the sink
+                std::string name = GST_ELEMENT_NAME(sink);
+                Debug::Log("Setting processing deadline for " + name);
+
+                // Set the processing deadline for the sink
+                g_object_set(sink, "processing-deadline", 1000000, nullptr);
+
+                // Unref the sink to free its resources
+                g_object_unref(sink);
+
+                // Free the item value
+                g_value_unset(&item);
+
+                break;
+            }
+            case GST_ITERATOR_RESYNC:
+                // Resync the iterator
+                gst_iterator_resync(sinks);
+                break;
+            case GST_ITERATOR_ERROR:
+                // Handle the error
+                g_warning("Error iterating sinks");
+                done = TRUE;
+                break;
+            case GST_ITERATOR_DONE:
+                // We're done iterating
+                done = TRUE;
+                break;
+        }
+    }
+
+    // Free the iterator
+    gst_iterator_free(sinks);
+}
+
 GstElement* GstAVPipeline::add_webrtcsink(GstElement* pipeline, const std::string& uri)
 {
     GstElement* webrtcsink = gst_element_factory_make("webrtcsink", nullptr);
@@ -421,6 +470,8 @@ GstElement* GstAVPipeline::add_webrtcsink(GstElement* pipeline, const std::strin
     g_value_unset(&meta_value);
 
     g_object_set(webrtcsink, "stun-server", nullptr, nullptr);
+
+    g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), nullptr);
 
     gst_bin_add(GST_BIN(pipeline), webrtcsink);
     return webrtcsink;
@@ -549,7 +600,7 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
             Debug::Log("Could not link dynamic video pad to rtph264depay", Level::Error);
         }
         gst_object_unref(sinkpad);
-
+        //g_object_set(appsink, "processing-deadline", 10000000, nullptr);
         gst_element_sync_state_with_parent(rtph264depay);
         gst_element_sync_state_with_parent(h264parse);
         gst_element_sync_state_with_parent(d3d11h264dec);
@@ -594,6 +645,7 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
         //gst_element_sync_state_with_parent(avpipeline->audiomixer);
     }
     g_free(pad_name);
+    gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
 }
 
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
@@ -705,8 +757,8 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
     _pipeline = gst_pipeline_new("Plugin AV Pipeline");
 
-    GstElement* webrtcsrc = add_webrtcsrc(_pipeline, remote_peer_id, uri, this);
-    GstElement* wasapi2src = add_wasapi2src(_pipeline);
+     GstElement* webrtcsrc = add_webrtcsrc(_pipeline, remote_peer_id, uri, this);
+    /* GstElement* wasapi2src = add_wasapi2src(_pipeline);
     GstElement* webrtcdsp = add_webrtcdsp(_pipeline);
     GstElement* audioconvert = add_audioconvert(_pipeline);
     GstElement* queue = add_queue(_pipeline);
@@ -714,10 +766,11 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
     GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(_pipeline);
     GstElement* webrtcsink = add_webrtcsink(_pipeline, uri);
 
-    if (!gst_element_link_many(wasapi2src, audioconvert, webrtcdsp, queue, opusenc, audio_caps_capsfilter, webrtcsink, nullptr))
+     if (!gst_element_link_many(wasapi2src, audioconvert, webrtcdsp, queue, opusenc, audio_caps_capsfilter, webrtcsink,
+                               nullptr))
     {
         Debug::Log("Audio sending elements could not be linked.", Level::Error);
-    }
+    }*/
 
     /* GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
     audiomixer = add_audiomixer(_pipeline);

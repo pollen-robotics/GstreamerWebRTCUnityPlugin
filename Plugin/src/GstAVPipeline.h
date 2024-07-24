@@ -56,7 +56,8 @@ public:
 private:
     static void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data);
     static void webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata);
-
+    static void consumer_added_callback(GstElement* consumer_id, gchararray webrtcbin, GstElement* arg1, gpointer udata);
+    
     static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
     static gboolean dumpLatencyCallback(GstAVPipeline* self);
