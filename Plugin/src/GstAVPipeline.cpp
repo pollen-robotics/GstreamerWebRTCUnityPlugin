@@ -757,8 +757,8 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
     _pipeline = gst_pipeline_new("Plugin AV Pipeline");
 
-     GstElement* webrtcsrc = add_webrtcsrc(_pipeline, remote_peer_id, uri, this);
-    /* GstElement* wasapi2src = add_wasapi2src(_pipeline);
+    GstElement* webrtcsrc = add_webrtcsrc(_pipeline, remote_peer_id, uri, this);
+    GstElement* wasapi2src = add_wasapi2src(_pipeline);
     GstElement* webrtcdsp = add_webrtcdsp(_pipeline);
     GstElement* audioconvert = add_audioconvert(_pipeline);
     GstElement* queue = add_queue(_pipeline);
@@ -766,11 +766,11 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
     GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(_pipeline);
     GstElement* webrtcsink = add_webrtcsink(_pipeline, uri);
 
-     if (!gst_element_link_many(wasapi2src, audioconvert, webrtcdsp, queue, opusenc, audio_caps_capsfilter, webrtcsink,
+    if (!gst_element_link_many(wasapi2src, audioconvert, webrtcdsp, queue, opusenc, audio_caps_capsfilter, webrtcsink,
                                nullptr))
     {
         Debug::Log("Audio sending elements could not be linked.", Level::Error);
-    }*/
+    }
 
     /* GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
     audiomixer = add_audiomixer(_pipeline);
