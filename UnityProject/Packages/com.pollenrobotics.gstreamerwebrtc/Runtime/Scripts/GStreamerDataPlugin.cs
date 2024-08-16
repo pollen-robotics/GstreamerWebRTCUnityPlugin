@@ -131,7 +131,7 @@ namespace GstreamerWebRTC
 
             _signallingServerURL = "ws://" + ip_address + ":8443";
 
-            _signalling = new Signalling(_signallingServerURL, producer, remote_producer_name);
+            _signalling = new Signalling(_signallingServerURL, remote_producer_name);
 
             _signalling.event_OnRemotePeerId.AddListener(StartPipeline);
             _signalling.event_OnSDPOffer.AddListener(OnSDPOffer);

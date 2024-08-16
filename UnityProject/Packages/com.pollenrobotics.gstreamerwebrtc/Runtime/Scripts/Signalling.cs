@@ -1,11 +1,11 @@
 using System;
 using UnityEngine;
 using System.Threading.Tasks;
-using NativeWebSocket;
+using System.Threading;
 using System.Linq;
 using UnityEngine.Events;
-using Codice.Client.BaseCommands;
-using PlasticPipe.PlasticProtocol.Messages;
+using System.Net.WebSockets;
+using System.Text;
 
 namespace GstreamerWebRTC
 {
@@ -61,7 +61,7 @@ namespace GstreamerWebRTC
 
     public class Signalling
     {
-        private WebSocket webSocket;
+        private ClientWebSocket webSocket;
         private string _remote_producer_name;
         private string _peer_id;
         private string _session_id;
@@ -74,11 +74,15 @@ namespace GstreamerWebRTC
         private Task task_askForList;
         private Task task_updateMessages;
         private bool tasks_running = false;
+        private Uri _uri;
+        private CancellationTokenSource _cts;
 
-        public Signalling(string url, bool producer, string remote_producer_name = "")
+        public Signalling(string url, string remote_producer_name = "")
         {
-            if (!producer && remote_producer_name == "")
+            if (remote_producer_name == "")
                 Debug.LogError("Remote producer name should be set for a consumer role");
+
+            _uri = new Uri(url);
 
             _remote_producer_name = remote_producer_name;
             sessionStatus = SessionStatus.Ended;
@@ -87,7 +91,10 @@ namespace GstreamerWebRTC
             event_OnSDPOffer = new UnityEvent<string>();
             event_OnICECandidate = new UnityEvent<string, int>();
 
-            webSocket = new WebSocket(url);
+            webSocket = new ClientWebSocket();
+            _cts = new CancellationTokenSource();
+
+            /*webSocket = new WebSocket(url);
 
             webSocket.OnOpen += () =>
             {
@@ -179,70 +186,168 @@ namespace GstreamerWebRTC
                                 }
                             );
                             event_OnICECandidate.Invoke(candidate);*/
-                        }
-                        else if (msg.sdp.IsValid())
-                        {
-                            if (msg.sdp.type == "offer")
-                            {
-                                Debug.Log("received offer " + msg.sdp.sdp);
-                                event_OnSDPOffer.Invoke(msg.sdp.sdp);
-                                /*var offer = new RTCSessionDescription
-                                {
-                                    type = RTCSdpType.Offer,
-                                    sdp = msg.sdp.sdp,
-                                };
-                                event_OnOffer.Invoke(offer);*/
-                            }
-                            else if (msg.sdp.type == "answer")
-                            {
-                                Debug.LogWarning("received answer");
-                                /*var answser = new RTCSessionDescription
-                                {
-                                    type = RTCSdpType.Answer,
-                                    sdp = msg.sdp.sdp,
-                                };
-                                event_OnAnswer.Invoke(answser);*/
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogError("Unrecognized message !" + sessionStatus);
-                    }
-                }
-            };
-            webSocket.OnError += (e) =>
-                {
-                    Debug.LogError($"WS error {e}");
-                };
-            webSocket.OnClose += (e) =>
+            /*}
+            else if (msg.sdp.IsValid())
             {
-                Debug.Log($"WS closed");
-            };
+                if (msg.sdp.type == "offer")
+                {
+                    Debug.Log("received offer " + msg.sdp.sdp);
+                    event_OnSDPOffer.Invoke(msg.sdp.sdp);
+                    /*var offer = new RTCSessionDescription
+                    {
+                        type = RTCSdpType.Offer,
+                        sdp = msg.sdp.sdp,
+                    };
+                    event_OnOffer.Invoke(offer);*/
+            /* }
+             else if (msg.sdp.type == "answer")
+             {
+                 Debug.LogWarning("received answer");
+                 /*var answser = new RTCSessionDescription
+                 {
+                     type = RTCSdpType.Answer,
+                     sdp = msg.sdp.sdp,
+                 };
+                 event_OnAnswer.Invoke(answser);*/
+            /*}
+        }
+    }
+    else
+    {
+        Debug.LogError("Unrecognized message !" + sessionStatus);
+    }
+}
+};
+webSocket.OnError += (e) =>
+{
+    Debug.LogError($"WS error {e}");
+};
+webSocket.OnClose += (e) =>
+{
+Debug.Log($"WS closed");
+};*/
 
 #if !UNITY_WEBGL || UNITY_EDITOR
-            task_updateMessages = new Task(() => UpdateMessages());
-            task_updateMessages.Start();
+            //task_updateMessages = new Task(() => UpdateMessages());
+            //task_updateMessages.Start();
 #endif
         }
-        public void Connect()
+        public async void Connect()
         {
-            webSocket.Connect();
+            // webSocket.Connect();
+            await webSocket.ConnectAsync(_uri, _cts.Token);
+            if (webSocket.State == WebSocketState.Open)
+            {
+                Debug.Log("Connected to WebSocket server.");
+                task_updateMessages = new Task(() => UpdateMessages());
+                task_updateMessages.Start();
+
+                //if (_isProducer)
+                SendMessage(MessageType.SetPeerStatus, MessageRole.Producer);
+                /*else
+                {
+                    SendMessage(MessageType.SetPeerStatus, MessageRole.Listener);
+                }*/
+
+            }
+            else
+            {
+                Debug.LogError("Failed to connect to WebSocket server.");
+            }
         }
+
+        /*private async Task Connection()
+        {
+            await webSocket.ConnectAsync(_url, CancellationToken.None);
+        }*/
 
         public async void UpdateMessages()
         {
             tasks_running = true;
             while (tasks_running)
             {
-                webSocket.DispatchMessageQueue();
-                await Task.Delay(200);
+                // webSocket.DispatchMessageQueue();
+                var responseBuffer = new byte[1024];
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(responseBuffer), _cts.Token);
+                var responseMessage = Encoding.UTF8.GetString(responseBuffer, 0, result.Count);
+                Debug.Log(responseMessage);
+                ProcessMessage(responseMessage);
+                //return responseMessage;
+                //await Task.Delay(200);
             }
         }
+
+        private void ProcessMessage(string message)
+        {
+            if (message != null)
+            {
+                var msg = JsonUtility.FromJson<SignalingMessage>(message);
+
+                if (msg.type == MessageType.Welcome.ToString())
+                {
+                    _peer_id = msg.peerId;
+                    Debug.Log("peer id : " + _peer_id);
+                    //if (!_isProducer)
+                    //{
+                    task_askForList = new Task(() => AskList());
+                    task_askForList.Start();
+                    //}
+                }
+                else if (msg.type == MessageType.PeerStatusChanged.ToString())
+                {
+                    Debug.Log(msg.ToString());
+                    if (msg.meta?.name == _remote_producer_name && msg.roles.Contains(MessageRole.Producer.ToString()))
+                    {
+                        Debug.Log("Start Session");
+                        SendStartSession(msg.peerId);
+                    }
+                }
+                else if (sessionStatus == SessionStatus.Ended && msg.type == MessageType.List.ToString())
+                {
+                    Debug.Log("processing list..");
+                    foreach (var p in msg.producers)
+                    {
+                        if (p.meta.name == _remote_producer_name)
+                        {
+                            tasks_running = false;
+                            SendStartSession(p.id);
+                            event_OnRemotePeerId.Invoke(p.id);
+                            sessionStatus = SessionStatus.Started;
+                            break;
+                        }
+                    }
+                }
+                else if (msg.type == MessageType.StartSession.ToString())
+                {
+                    _session_id = msg.sessionId;
+                    //event_OnConnectionStatus.Invoke(ConnectionStatus.Ready);
+                }
+                else if (msg.type == MessageType.SessionStarted.ToString())
+                {
+                    _session_id = msg.sessionId;
+                    //Debug.Log("session id: " + _session_id);
+                    Debug.Log("Session started. peer id:" + msg.peerId + " session id:" + msg.sessionId);
+                    //event_OnConnectionStatus.Invoke(ConnectionStatus.Ready);
+                    sessionStatus = SessionStatus.Started;
+                }
+                else if (msg.type == MessageType.SessionEnded.ToString())
+                {
+                    _session_id = null;
+                    Debug.Log("session ended: " + msg.sessionId);
+
+                    //event_OnConnectionStatus.Invoke(ConnectionStatus.Waiting);
+                    sessionStatus = SessionStatus.Ended;
+                }
+
+            }
+        }
+
         public void Close()
         {
             tasks_running = false;
-            webSocket.Close();
+            //webSocket.Close();
+            //await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", _cts.Token);
+            _cts.Cancel();
         }
 
         public async void SendSDP(string sdp_msg, string type = "answer")
@@ -257,7 +362,9 @@ namespace GstreamerWebRTC
                     sdp = sdp_msg,
                 },
             });
-            await webSocket.SendText(msg);
+            //await webSocket.SendText(msg);
+            var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
+            await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
         }
 
         public async void SendICECandidate(string candidate, int mline_index)
@@ -268,7 +375,9 @@ namespace GstreamerWebRTC
                 sessionId = _session_id,
                 ice = new ICECandidateMessage(candidate, mline_index),
             });
-            await webSocket.SendText(msg);
+            // await webSocket.SendText(msg);
+            var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
+            await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
         }
 
         private async void AskList()
@@ -283,7 +392,9 @@ namespace GstreamerWebRTC
                     {
                         type = MessageType.List.ToString(),
                     });
-                    await webSocket.SendText(msg);
+                    // await webSocket.SendText(msg);
+                    var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
+                    await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
                 }
                 await Task.Delay(1000);
             }
@@ -297,7 +408,9 @@ namespace GstreamerWebRTC
                 type = type.ToString(),
                 roles = new string[] { role.ToString() },
             });
-            await webSocket.SendText(msg);
+            //await webSocket.SendText(msg);
+            var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
+            await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
         }
 
         private async void SendStartSession(string peer_id)
@@ -309,7 +422,9 @@ namespace GstreamerWebRTC
                 roles = new string[] { MessageRole.Consumer.ToString() },
                 peerId = peer_id,
             });
-            await webSocket.SendText(msg);
+            //await webSocket.SendText(msg);
+            var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
+            await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
             sessionStatus = SessionStatus.Asked;
         }
     }
