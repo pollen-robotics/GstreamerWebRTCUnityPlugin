@@ -9,56 +9,6 @@ using System.Text;
 
 namespace GstreamerWebRTC
 {
-
-    public enum ConnectionStatus
-    {
-        Waiting,
-        Ready,
-        Kicked,
-    }
-
-    public enum SessionStatus
-    {
-        Asked,
-        Started,
-        Ended,
-    }
-
-    public class MessageType
-    {
-        private MessageType(string value) { Value = value; }
-
-        public string Value { get; private set; }
-
-        public static MessageType Welcome { get { return new MessageType("welcome"); } }
-        public static MessageType SetPeerStatus { get { return new MessageType("setPeerStatus"); } }
-        public static MessageType PeerStatusChanged { get { return new MessageType("peerStatusChanged"); } }
-        public static MessageType StartSession { get { return new MessageType("startSession"); } }
-        public static MessageType SessionStarted { get { return new MessageType("sessionStarted"); } }
-        public static MessageType SessionEnded { get { return new MessageType("endSession"); } }
-        public static MessageType Peer { get { return new MessageType("peer"); } }
-        public static MessageType List { get { return new MessageType("list"); } }
-        public override string ToString()
-        {
-            return Value;
-        }
-    }
-
-    public class MessageRole
-    {
-        private MessageRole(string value) { Value = value; }
-
-        public string Value { get; private set; }
-
-        public static MessageRole Listener { get { return new MessageRole("listener"); } }
-        public static MessageRole Producer { get { return new MessageRole("producer"); } }
-        public static MessageRole Consumer { get { return new MessageRole("consumer"); } }
-        public override string ToString()
-        {
-            return Value;
-        }
-    }
-
     public class Signalling
     {
         private ClientWebSocket webSocket;
@@ -77,6 +27,7 @@ namespace GstreamerWebRTC
         private Uri _uri;
         private CancellationTokenSource _cts;
 
+
         public Signalling(string url, string remote_producer_name = "")
         {
             if (remote_producer_name == "")
@@ -94,143 +45,6 @@ namespace GstreamerWebRTC
             webSocket = new ClientWebSocket();
             _cts = new CancellationTokenSource();
 
-            /*webSocket = new WebSocket(url);
-
-            webSocket.OnOpen += () =>
-            {
-                if (producer)
-                    SendMessage(MessageType.SetPeerStatus, MessageRole.Producer);
-                else
-                {
-                    SendMessage(MessageType.SetPeerStatus, MessageRole.Listener);
-                }
-            };
-            webSocket.OnMessage += (bytes) =>
-            {
-                var message = System.Text.Encoding.UTF8.GetString(bytes);
-                Debug.LogWarning(message);
-                if (message != null)
-                {
-                    var msg = JsonUtility.FromJson<SignalingMessage>(message);
-
-                    if (msg.type == MessageType.Welcome.ToString())
-                    {
-                        _peer_id = msg.peerId;
-                        //event_OnConnectionStatus.Invoke(ConnectionStatus.Waiting);
-                        Debug.Log("peer id : " + _peer_id);
-                        if (!producer)
-                        {
-                            task_askForList = new Task(() => AskList());
-                            task_askForList.Start();
-                        }
-                    }
-                    else if (msg.type == MessageType.PeerStatusChanged.ToString())
-                    {
-                        Debug.Log(msg.ToString());
-                        if (msg.meta?.name == _remote_producer_name && msg.roles.Contains(MessageRole.Producer.ToString()))
-                        {
-                            //event_OnRemotePeerId.Invoke(msg.peerId);
-                            Debug.Log("Start Session");
-                            SendStartSession(msg.peerId);
-                        }
-                    }
-                    else if (sessionStatus == SessionStatus.Ended && msg.type == MessageType.List.ToString())
-                    {
-                        Debug.Log("processing list..");
-                        foreach (var p in msg.producers)
-                        {
-                            if (p.meta.name == _remote_producer_name)
-                            {
-                                SendStartSession(p.id);
-                                event_OnRemotePeerId.Invoke(p.id);
-                                sessionStatus = SessionStatus.Started;
-                                break;
-                            }
-                        }
-                    }
-                    else if (msg.type == MessageType.StartSession.ToString())
-                    {
-                        Debug.Log("1 " + msg.sessionId);
-                        _session_id = msg.sessionId;
-                        //event_OnConnectionStatus.Invoke(ConnectionStatus.Ready);
-                    }
-                    else if (msg.type == MessageType.SessionStarted.ToString())
-                    {
-                        Debug.Log("2 " + msg.sessionId);
-                        _session_id = msg.sessionId;
-                        //Debug.Log("session id: " + _session_id);
-                        Debug.Log("Session started. peer id:" + msg.peerId + " session id:" + msg.sessionId);
-                        //event_OnConnectionStatus.Invoke(ConnectionStatus.Ready);
-                        sessionStatus = SessionStatus.Started;
-                    }
-                    else if (msg.type == MessageType.SessionEnded.ToString())
-                    {
-                        _session_id = null;
-                        Debug.Log("session ended: " + msg.sessionId);
-
-                        //event_OnConnectionStatus.Invoke(ConnectionStatus.Waiting);
-                        sessionStatus = SessionStatus.Ended;
-                    }
-                    else if (msg.type == MessageType.Peer.ToString())
-                    {
-                        if (msg.ice.IsValid())
-                        {
-                            Debug.Log("received ice candidate " + msg.ice.candidate + " " + msg.ice.sdpMLineIndex);
-                            event_OnICECandidate.Invoke(msg.ice.candidate, msg.ice.sdpMLineIndex);
-                            /*RTCIceCandidate candidate = new RTCIceCandidate(
-                                new RTCIceCandidateInit
-                                {
-                                    candidate = msg.ice.candidate,
-                                    sdpMid = msg.ice.sdpMid,
-                                    sdpMLineIndex = msg.ice.sdpMLineIndex,
-                                }
-                            );
-                            event_OnICECandidate.Invoke(candidate);*/
-            /*}
-            else if (msg.sdp.IsValid())
-            {
-                if (msg.sdp.type == "offer")
-                {
-                    Debug.Log("received offer " + msg.sdp.sdp);
-                    event_OnSDPOffer.Invoke(msg.sdp.sdp);
-                    /*var offer = new RTCSessionDescription
-                    {
-                        type = RTCSdpType.Offer,
-                        sdp = msg.sdp.sdp,
-                    };
-                    event_OnOffer.Invoke(offer);*/
-            /* }
-             else if (msg.sdp.type == "answer")
-             {
-                 Debug.LogWarning("received answer");
-                 /*var answser = new RTCSessionDescription
-                 {
-                     type = RTCSdpType.Answer,
-                     sdp = msg.sdp.sdp,
-                 };
-                 event_OnAnswer.Invoke(answser);*/
-            /*}
-        }
-    }
-    else
-    {
-        Debug.LogError("Unrecognized message !" + sessionStatus);
-    }
-}
-};
-webSocket.OnError += (e) =>
-{
-    Debug.LogError($"WS error {e}");
-};
-webSocket.OnClose += (e) =>
-{
-Debug.Log($"WS closed");
-};*/
-
-#if !UNITY_WEBGL || UNITY_EDITOR
-            //task_updateMessages = new Task(() => UpdateMessages());
-            //task_updateMessages.Start();
-#endif
         }
         public async void Connect()
         {
@@ -239,6 +53,7 @@ Debug.Log($"WS closed");
             if (webSocket.State == WebSocketState.Open)
             {
                 Debug.Log("Connected to WebSocket server.");
+                tasks_running = true;
                 task_updateMessages = new Task(() => UpdateMessages());
                 task_updateMessages.Start();
 
@@ -256,25 +71,24 @@ Debug.Log($"WS closed");
             }
         }
 
-        /*private async Task Connection()
-        {
-            await webSocket.ConnectAsync(_url, CancellationToken.None);
-        }*/
 
         public async void UpdateMessages()
         {
-            tasks_running = true;
+            //tasks_running = true;
             while (tasks_running)
             {
                 // webSocket.DispatchMessageQueue();
                 var responseBuffer = new byte[1024];
+                Debug.Log("wait receiv");
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(responseBuffer), _cts.Token);
                 var responseMessage = Encoding.UTF8.GetString(responseBuffer, 0, result.Count);
-                Debug.Log(responseMessage);
+                Debug.Log("message " + responseMessage);
                 ProcessMessage(responseMessage);
+                Debug.Log("here");
                 //return responseMessage;
                 //await Task.Delay(200);
             }
+            Debug.Log("Quit update message");
         }
 
         private void ProcessMessage(string message)
@@ -309,13 +123,27 @@ Debug.Log($"WS closed");
                     {
                         if (p.meta.name == _remote_producer_name)
                         {
-                            tasks_running = false;
+                            //tasks_running = false;
                             SendStartSession(p.id);
                             event_OnRemotePeerId.Invoke(p.id);
                             sessionStatus = SessionStatus.Started;
                             break;
                         }
                     }
+                }
+                else if (sessionStatus == SessionStatus.Started && msg.type == MessageType.List.ToString())
+                {
+                    Debug.Log("Checking presence of producer " + _remote_producer_name);
+                    foreach (var p in msg.producers)
+                    {
+                        if (p.meta.name == _remote_producer_name)
+                        {
+                            break;
+                        }
+                    }
+                    Debug.LogWarning("Producer has " + _remote_producer_name + " left");
+                    sessionStatus = SessionStatus.Ended;
+                    _session_id = null;
                 }
                 else if (msg.type == MessageType.StartSession.ToString())
                 {
@@ -338,7 +166,30 @@ Debug.Log($"WS closed");
                     //event_OnConnectionStatus.Invoke(ConnectionStatus.Waiting);
                     sessionStatus = SessionStatus.Ended;
                 }
-
+                else if (msg.type == MessageType.Peer.ToString())
+                {
+                    if (msg.ice.IsValid())
+                    {
+                        Debug.Log("received ice candidate " + msg.ice.candidate + " " + msg.ice.sdpMLineIndex);
+                        event_OnICECandidate.Invoke(msg.ice.candidate, msg.ice.sdpMLineIndex);
+                    }
+                    else if (msg.sdp.IsValid())
+                    {
+                        if (msg.sdp.type == "offer")
+                        {
+                            Debug.Log("received offer " + msg.sdp.sdp);
+                            event_OnSDPOffer.Invoke(msg.sdp.sdp);
+                        }
+                        else if (msg.sdp.type == "answer")
+                        {
+                            Debug.LogWarning("received answer");
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.Log("Message not processed " + msg);
+                }
             }
         }
 
@@ -348,6 +199,8 @@ Debug.Log($"WS closed");
             //webSocket.Close();
             //await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", _cts.Token);
             _cts.Cancel();
+            task_askForList.Wait();
+            task_updateMessages.Wait();
         }
 
         public async void SendSDP(string sdp_msg, string type = "answer")
@@ -363,6 +216,7 @@ Debug.Log($"WS closed");
                 },
             });
             //await webSocket.SendText(msg);
+            Debug.Log("Send SDP answer " + msg);
             var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
             await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
         }
@@ -382,20 +236,20 @@ Debug.Log($"WS closed");
 
         private async void AskList()
         {
-            tasks_running = true;
+            //tasks_running = true;
             while (tasks_running)
             {
-                if (sessionStatus == SessionStatus.Ended)
+                //if (sessionStatus == SessionStatus.Ended)
+                //{
+                Debug.Log("Ask for list");
+                string msg = JsonUtility.ToJson(new SignalingMessage
                 {
-                    Debug.Log("Ask for list");
-                    string msg = JsonUtility.ToJson(new SignalingMessage
-                    {
-                        type = MessageType.List.ToString(),
-                    });
-                    // await webSocket.SendText(msg);
-                    var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
-                    await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
-                }
+                    type = MessageType.List.ToString(),
+                });
+                // await webSocket.SendText(msg);
+                var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
+                await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
+                //}
                 await Task.Delay(1000);
             }
         }
@@ -423,113 +277,12 @@ Debug.Log($"WS closed");
                 peerId = peer_id,
             });
             //await webSocket.SendText(msg);
+            Debug.Log("send start session " + msg);
             var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
             await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, _cts.Token);
             sessionStatus = SessionStatus.Asked;
         }
     }
 
-    //Class used for building json messages
 
-    [System.Serializable]
-    class Meta
-    {
-        public string name = "UnityClient";
-    }
-
-    [System.Serializable]
-    class Producer
-    {
-        public string id;
-        public Meta meta;
-    }
-
-    [System.Serializable]
-    class SdpMessage
-    {
-        public string type;
-        public string sdp;
-
-        public bool IsValid()
-        {
-            return sdp != default(string);
-        }
-
-        public override string ToString()
-        {
-            return String.Format("{0} : {1}", type, sdp);
-        }
-    }
-
-    [System.Serializable]
-    class ICECandidateMessage
-    {
-        public string candidate;
-        //public string sdpMid;
-        public int sdpMLineIndex;
-        // public string usernameFragment;
-
-        /*public ICECandidateMessage(RTCIceCandidate candidate)
-        {
-            this.candidate = candidate.Candidate;
-            this.sdpMid = candidate.SdpMid;
-            this.sdpMLineIndex = candidate.SdpMLineIndex ?? 0;
-            this.usernameFragment = candidate.UserNameFragment;
-        }*/
-
-        public ICECandidateMessage(string candidate, int mline_index)
-        {
-            this.candidate = candidate;
-            sdpMLineIndex = mline_index;
-        }
-
-        public bool IsValid()
-        {
-            //ignore null ice candidate. Ongoing patch with Unity
-            return candidate != default(string) && candidate != "";
-        }
-    }
-
-    [System.Serializable]
-    class SignalingMessage
-    {
-        public string type;
-        public string peerId;
-        public string sessionId;
-        public Meta meta;
-        public string[] roles;
-        public ICECandidateMessage ice;
-        public SdpMessage sdp;
-        public Producer[] producers;
-
-        public override string ToString()
-        {
-            return String.Format("{0} : {1} : {2} : {3}", type, peerId, meta, roles);
-        }
-
-    }
-
-    [System.Serializable]
-    class SDPMessage
-    {
-        public string type;
-        public string sessionId;
-        public SdpMessage sdp;
-    }
-
-    [System.Serializable]
-    class ICEMessage
-    {
-        public string type;
-        public string sessionId;
-        public ICECandidateMessage ice;
-    }
-
-    [System.Serializable]
-    class StartSessionMessage
-    {
-        public string type;
-        public string peerId;
-        public string[] roles;
-    }
 }

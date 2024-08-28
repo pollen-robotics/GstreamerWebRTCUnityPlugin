@@ -48,11 +48,11 @@ namespace GstreamerWebRTC
             rightRawImage.texture = right;
             renderingPlugin.event_OnPipelineStarted.AddListener(PipelineStarted);
             renderingPlugin.Connect();
-            dataPlugin = new GStreamerDataPlugin(ip_address);
+            /*dataPlugin = new GStreamerDataPlugin(ip_address);
             dataPlugin.event_OnPipelineStarted.AddListener(PipelineDataStarted);
             GStreamerDataPlugin.event_OnChannelServiceOpen.AddListener(OnChannelServiceOpen);
             GStreamerDataPlugin.event_OnChannelServiceData.AddListener(OnChannelServiceData);
-            dataPlugin.Connect();
+            dataPlugin.Connect();*/
         }
 
         protected virtual void PipelineStarted()
@@ -68,8 +68,7 @@ namespace GstreamerWebRTC
         protected virtual void OnDisable()
         {
             renderingPlugin.Cleanup();
-            dataPlugin.Cleanup();
-            dataPlugin = null;
+            //dataPlugin.Cleanup();
         }
 
         void Update()

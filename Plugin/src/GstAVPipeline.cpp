@@ -665,6 +665,23 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 
 GstAVPipeline::~GstAVPipeline()
 {
+    /* if (_leftData != nullptr)
+    {
+        gst_clear_sample(&_leftData->last_sample);
+        gst_clear_caps(&_leftData->last_caps);
+        gst_clear_buffer(&_leftData->shared_buffer);
+        gst_clear_object(&_leftData->conv);
+        _leftData.reset(nullptr);
+    }
+    if (_rightData != nullptr)
+    {
+        gst_clear_sample(&_rightData->last_sample);
+        gst_clear_caps(&_rightData->last_caps);
+        gst_clear_buffer(&_rightData->shared_buffer);
+        gst_clear_object(&_rightData->conv);
+        _rightData.reset(nullptr);
+    }*/
+
     gst_clear_object(&_device);
     gst_object_unref(_device);
     g_main_context_unref(main_context_);
@@ -792,13 +809,13 @@ void GstAVPipeline::DestroyPipeline()
         Debug::Log("GstAVPipeline pipeline already released", Level::Warning);
     }
 
-    if (_leftData != nullptr)
+    /* if (_leftData != nullptr)
     {
         gst_clear_sample(&_leftData->last_sample);
         gst_clear_caps(&_leftData->last_caps);
         gst_clear_buffer(&_leftData->shared_buffer);
         gst_clear_object(&_leftData->conv);
-        _leftData.reset(nullptr);
+        //_leftData.reset(nullptr);
     }
     if (_rightData != nullptr)
     {
@@ -806,8 +823,8 @@ void GstAVPipeline::DestroyPipeline()
         gst_clear_caps(&_rightData->last_caps);
         gst_clear_buffer(&_rightData->shared_buffer);
         gst_clear_object(&_rightData->conv);
-        _rightData.reset(nullptr);
-    }
+        //_rightData.reset(nullptr);
+    }*/
 }
 
 ID3D11Texture2D* GstAVPipeline::GetTexturePtr(bool left)
@@ -886,7 +903,7 @@ gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
             break;
         }
         default:
-            Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
+            //Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
             break;
     }
 
