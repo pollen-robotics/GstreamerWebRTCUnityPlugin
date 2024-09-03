@@ -103,8 +103,8 @@ namespace GstreamerWebRTC
                         tasks_running = true;
                         task_updateMessages = new Task(() => UpdateMessages());
                         task_updateMessages.Start();
-                        //task_checkconnection = new Task(() => CheckConnectionStatus());
-                        //task_checkconnection.Start();
+                        task_checkconnection = new Task(() => CheckConnectionStatus());
+                        task_checkconnection.Start();
                         break;
                     }
                     else
@@ -145,12 +145,12 @@ namespace GstreamerWebRTC
             {
                 // webSocket.DispatchMessageQueue();
                 var responseBuffer = new byte[1024];
-                Debug.Log("wait receiv " + webSocket.State);
+                //Debug.Log("wait receiv " + webSocket.State);
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(responseBuffer), _cts.Token);
                 var responseMessage = Encoding.UTF8.GetString(responseBuffer, 0, result.Count);
                 Debug.Log("message " + responseMessage);
                 ProcessMessage(responseMessage);
-                Debug.Log("here");
+                //Debug.Log("here");
                 //return responseMessage;
                 //await Task.Delay(200);
             }
@@ -200,6 +200,7 @@ namespace GstreamerWebRTC
                         Debug.LogWarning("Producer has " + _remote_producer_name + " left");
                         sessionStatus = SessionStatus.Ended;
                         event_OnRemotePeerLeft.Invoke();
+                        Close();
                     }
                 }
                 else
@@ -218,7 +219,7 @@ namespace GstreamerWebRTC
             _cts.Cancel();
             task_askForList.Wait();
             task_updateMessages.Wait();
-            //task_checkconnection.Wait();
+            task_checkconnection.Wait();
         }
 
 

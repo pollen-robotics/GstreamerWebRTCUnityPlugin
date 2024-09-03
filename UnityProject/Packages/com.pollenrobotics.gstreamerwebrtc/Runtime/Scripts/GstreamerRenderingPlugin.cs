@@ -94,7 +94,7 @@ namespace GstreamerWebRTC
         public GStreamerRenderingPlugin(string ip_address, ref Texture leftTexture, ref Texture rightTexture)
         {
             _started = false;
-            //_autoreconnect = true;
+            _autoreconnect = true;
             _signallingServerURL = "ws://" + ip_address + ":8443";
 
             _signalling = new BaseSignalling(_signallingServerURL, remote_producer_name);
