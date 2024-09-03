@@ -39,20 +39,20 @@ namespace GstreamerWebRTC
 
     public class BaseSignalling
     {
-        private ClientWebSocket webSocket;
-        private string _remote_producer_name;
-        private string _peer_id;
+        protected ClientWebSocket webSocket;
+        protected string _remote_producer_name;
+        protected string _peer_id;
         //private string _session_id;
         public UnityEvent<string> event_OnRemotePeerId;
         public UnityEvent event_OnRemotePeerLeft;
 
-        private SessionStatus sessionStatus;
+        protected SessionStatus sessionStatus;
         private Task task_askForList;
         private Task task_updateMessages;
         private Task task_checkconnection;
         private bool tasks_running = false;
         private Uri _uri;
-        private CancellationTokenSource _cts;
+        protected CancellationTokenSource _cts;
 
         private const int MAX_CONNECTION_ATTEMPTS = 100;
 
@@ -157,7 +157,12 @@ namespace GstreamerWebRTC
             Debug.Log("Quit update message");
         }
 
-        private void ProcessMessage(string message)
+        protected virtual void StartSession(string id)
+        {
+
+        }
+
+        protected virtual void ProcessMessage(string message)
         {
             if (message != null)
             {
@@ -178,6 +183,7 @@ namespace GstreamerWebRTC
                         if (p.meta.name == _remote_producer_name)
                         {
                             event_OnRemotePeerId.Invoke(p.id);
+                            StartSession(p.id);
                             sessionStatus = SessionStatus.Started;
                             break;
                         }
