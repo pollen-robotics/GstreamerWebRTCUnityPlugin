@@ -56,6 +56,8 @@ namespace GstreamerWebRTC
 
         private const int MAX_CONNECTION_ATTEMPTS = 100;
 
+        private bool request_stop = false;
+
 
         public BaseSignalling(string url, string remote_producer_name = "")
         {
@@ -70,15 +72,14 @@ namespace GstreamerWebRTC
             event_OnRemotePeerId = new UnityEvent<string>();
             event_OnRemotePeerLeft = new UnityEvent();
 
-
-            //webSocket = new ClientWebSocket();
-            //_cts = new CancellationTokenSource();
-
+            request_stop = false;
         }
+
 
         ~BaseSignalling()
         {
             Debug.Log("Finish");
+            request_stop = true;
             Close();
             webSocket?.Dispose();
             task_askForList?.Dispose();
@@ -110,13 +111,16 @@ namespace GstreamerWebRTC
                     else
                     {
                         Debug.LogWarning("Failed to connect to WebSocket server. Attempt " + i);
+
                     }
                 }
                 catch (WebSocketException ex)
                 {
                     Debug.LogWarning("Failed to connect to WebSocket server. Attempt " + i + ". Exception " + ex);
+                    if (request_stop)
+                        break;
                 }
-                //await Task.Delay(1000);
+
             }
             if (webSocket.State != WebSocketState.Open)
                 Debug.LogError("Failed to connect to WebSocket server.");
@@ -218,16 +222,21 @@ namespace GstreamerWebRTC
 
         public void Close()
         {
+            Debug.Log("Close signalling");
             tasks_running = false;
             sessionStatus = SessionStatus.Ended;
             //webSocket.Close();
             //await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", _cts.Token);
             _cts.Cancel();
-            task_askForList.Wait();
-            task_updateMessages.Wait();
-            task_checkconnection.Wait();
+            task_askForList?.Wait();
+            task_updateMessages?.Wait();
+            task_checkconnection?.Wait();
         }
 
+        public void RequestStop()
+        {
+            request_stop = true;
+        }
 
         private async void AskList()
         {

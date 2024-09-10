@@ -141,6 +141,7 @@ namespace GstreamerWebRTC
 
         void StopPipeline()
         {
+            Debug.Log("Stop");
             _started = false;
             DestroyPipeline();
             if (_autoreconnect)
@@ -149,9 +150,12 @@ namespace GstreamerWebRTC
 
         public void Cleanup()
         {
+            Debug.Log("Cleanup");
             //_command = null;
             _autoreconnect = false;
             _signalling.Close();
+            _signalling.RequestStop();
+
             StopPipeline();
             if (leftTextureNativePtr != IntPtr.Zero)
             {
