@@ -122,7 +122,7 @@ namespace GstreamerWebRTC
                 }
 
             }
-            if (webSocket.State != WebSocketState.Open)
+            if (webSocket.State != WebSocketState.Open && !request_stop)
                 Debug.LogError("Failed to connect to WebSocket server.");
         }
 
