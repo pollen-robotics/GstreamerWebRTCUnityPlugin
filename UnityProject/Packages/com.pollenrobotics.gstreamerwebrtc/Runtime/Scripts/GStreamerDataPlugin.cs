@@ -120,8 +120,13 @@ namespace GstreamerWebRTC
         public static UnityEvent<byte[]> event_OnChannelStateData;
         public static UnityEvent<byte[]> event_OnChannelAuditData;
 
+        //private bool _started = false;
+        private bool _autoreconnect = false;
+
         public GStreamerDataPlugin(string ip_address)
         {
+            //_started = false;
+            _autoreconnect = true;
             RegisterICECallback(OnICECallback);
             RegisterSDPCallback(OnSDPCallback);
             RegisterChannelServiceOpenCallback(OnChannelServiceOpenCallback);
@@ -131,9 +136,10 @@ namespace GstreamerWebRTC
 
             _signallingServerURL = "ws://" + ip_address + ":8443";
 
-            _signalling = new Signalling(_signallingServerURL, producer, remote_producer_name);
+            _signalling = new Signalling(_signallingServerURL, remote_producer_name);
 
             _signalling.event_OnRemotePeerId.AddListener(StartPipeline);
+            _signalling.event_OnRemotePeerLeft.AddListener(StopPipeline);
             _signalling.event_OnSDPOffer.AddListener(OnSDPOffer);
             _signalling.event_OnICECandidate.AddListener(OnReceivedICE);
 
@@ -161,6 +167,14 @@ namespace GstreamerWebRTC
             Debug.Log("start pipe " + remote_peer_id);
             CreateDataPipeline();
             event_OnPipelineStarted.Invoke();
+            // _started = true;
+        }
+
+        void StopPipeline()
+        {
+            // _started = false;
+            if (_autoreconnect)
+                Connect();
         }
 
         void OnSDPOffer(string sdp_offer)
@@ -186,6 +200,7 @@ namespace GstreamerWebRTC
         public void Cleanup()
         {
             _signalling.Close();
+            _signalling.RequestStop();
             DestroyDataPipeline();
         }
 
