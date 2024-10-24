@@ -82,9 +82,18 @@ namespace GstreamerWebRTC
             request_stop = true;
             Close();
             webSocket?.Dispose();
-            task_askForList?.Dispose();
+            /*task_askForList?.Dispose();
             task_checkconnection?.Dispose();
-            task_updateMessages?.Dispose();
+            task_updateMessages?.Dispose();*/
+            //CloseTasks();
+        }
+
+        void CloseTasks()
+        {
+            tasks_running = false;
+            task_askForList?.Wait();
+            task_updateMessages?.Wait();
+            task_checkconnection?.Wait();
         }
 
         public async void Connect()
@@ -93,6 +102,7 @@ namespace GstreamerWebRTC
             {
                 try
                 {
+                    Close();
                     webSocket = new ClientWebSocket();
                     _cts = new CancellationTokenSource();
                     Debug.Log("trying to connect...");
@@ -141,6 +151,7 @@ namespace GstreamerWebRTC
             if (!request_stop)
                 event_OnRemotePeerLeft.Invoke();
             Close();
+            Debug.Log("Quit check connection");
         }
 
         public async void UpdateMessages()
@@ -153,7 +164,7 @@ namespace GstreamerWebRTC
                 //Debug.Log("wait receiv " + webSocket.State);
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(responseBuffer), _cts.Token);
                 var responseMessage = Encoding.UTF8.GetString(responseBuffer, 0, result.Count);
-                Debug.Log("message " + responseMessage);
+                //Debug.Log("message " + responseMessage);
                 ProcessMessage(responseMessage);
                 //Debug.Log("here");
                 //return responseMessage;
@@ -229,10 +240,11 @@ namespace GstreamerWebRTC
             sessionStatus = SessionStatus.Ended;
             //webSocket.Close();
             //await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", _cts.Token);
-            _cts.Cancel();
+            _cts?.Cancel();
             task_askForList?.Wait();
             task_updateMessages?.Wait();
             task_checkconnection?.Wait();
+            //CloseTasks();
         }
 
         public void RequestStop()
@@ -258,6 +270,7 @@ namespace GstreamerWebRTC
                 //}
                 await Task.Delay(1000);
             }
+            Debug.Log("Quit ask for list");
         }
     }
 }

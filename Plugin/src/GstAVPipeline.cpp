@@ -13,7 +13,7 @@ using namespace Microsoft::WRL;
 // Creates the underlying D3D11 texture using the provided unity device.
 // This texture can then be turned into a proper Unity texture on the
 // managed side using Texture2D.CreateExternalTexture()
-bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool left)
+ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool left)
 {
     auto device = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice();
     HRESULT hr = S_OK;
@@ -22,7 +22,7 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
 
     std::unique_ptr<AppData> data = std::make_unique<AppData>();
     data->avpipeline = this;
-
+    
     // Create a texture 2D that can be shared
     D3D11_TEXTURE2D_DESC desc = {};
     desc.Width = width;
@@ -36,17 +36,18 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
     desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
     // desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 
-    hr = device->CreateTexture2D(&desc, nullptr, &data->texture);
+    ComPtr<ID3D11Texture2D> texture;
+    hr = device->CreateTexture2D(&desc, nullptr, &/* data->*/texture);
     g_assert(SUCCEEDED(hr));
 
-    hr = data->texture.As(&data->keyed_mutex);
+    hr = /* data->*/texture.As(&data->keyed_mutex);
     g_assert(SUCCEEDED(hr));
 
     hr = data->keyed_mutex->AcquireSync(0, INFINITE);
     g_assert(SUCCEEDED(hr));
 
     ComPtr<IDXGIResource1> dxgi_resource;
-    hr = data->texture.As(&dxgi_resource);
+    hr = /* data->*/texture.As(&dxgi_resource);
     g_assert(SUCCEEDED(hr));
 
     HANDLE shared_handle = nullptr;
@@ -59,6 +60,9 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
     hr = gst_device->QueryInterface(IID_PPV_ARGS(&device1));
     g_assert(SUCCEEDED(hr));
 
+    //hr = device1->QueryInterface(IID_PPV_ARGS(&pDebug));
+    //g_assert(SUCCEEDED(hr));
+    
     /* Open shared texture at GStreamer device side */
     ComPtr<ID3D11Texture2D> gst_texture;
     hr = device1->OpenSharedResource1(shared_handle, IID_PPV_ARGS(&gst_texture));
@@ -71,18 +75,25 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
     GstMemory* mem = gst_d3d11_allocator_alloc_wrapped(nullptr, _device, gst_texture.Get(),
                                                        /* CPU accessible (staging texture) memory size is unknown.
                                                         * Pass zero here, then GStreamer will calculate it */
-                                                       0, nullptr, nullptr);
+                                                  0, nullptr, nullptr);
     g_assert(mem);
 
     data->shared_buffer = gst_buffer_new();
     gst_buffer_append_memory(data->shared_buffer, mem);
 
     if (left)
+    {
         _leftData = std::move(data);
-    else
-        _rightData = std::move(data);
+        //return _leftData->texture.Get();
 
-    return true;
+    }
+    else
+    {
+        _rightData = std::move(data);
+       // return _rightData->texture.Get();
+    }
+    return texture.Get();
+    //return true;
 }
 
 GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data)
@@ -657,9 +668,9 @@ void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstEle
 void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
 {
     if (texture != nullptr)
-    {
+    {  
         texture->Release();
-        texture = nullptr;
+        texture = nullptr;        
     }
 }
 
@@ -717,13 +728,18 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 
 GstAVPipeline::~GstAVPipeline()
 {
-    if (_leftData != nullptr)
+    /* if (_leftData != nullptr)
     {
         gst_clear_sample(&_leftData->last_sample);
         gst_clear_caps(&_leftData->last_caps);
         gst_clear_buffer(&_leftData->shared_buffer);
         gst_clear_object(&_leftData->conv);
-        _leftData.reset(nullptr);
+        //_leftData->avpipeline = nullptr;
+        //_leftData->keyed_mutex->Release();
+        //_leftData->texture->Release();
+        _leftData->keyed_mutex = nullptr;
+        //_leftData->texture = nullptr;
+       // _leftData.reset(nullptr);
     }
     if (_rightData != nullptr)
     {
@@ -731,8 +747,9 @@ GstAVPipeline::~GstAVPipeline()
         gst_clear_caps(&_rightData->last_caps);
         gst_clear_buffer(&_rightData->shared_buffer);
         gst_clear_object(&_rightData->conv);
-        _rightData.reset(nullptr);
-    }
+        //_rightData.reset(nullptr);
+        _rightData->keyed_mutex = nullptr;
+    }*/
 
     gst_clear_object(&_device);
     gst_object_unref(_device);
@@ -831,7 +848,8 @@ void GstAVPipeline::CreateDevice()
         auto luid = gst_d3d11_luid_to_int64(&adapter_desc.AdapterLuid);
 
         /* This device will be used by our pipeline */
-        _device = gst_d3d11_device_new_for_adapter_luid(luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT);
+        _device =
+            gst_d3d11_device_new_for_adapter_luid(luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT /* | D3D11_CREATE_DEVICE_DEBUG*/);
         g_assert(_device);
     }
     else
@@ -863,15 +881,37 @@ void GstAVPipeline::DestroyPipeline()
     {
         Debug::Log("GstAVPipeline pipeline already released", Level::Warning);
     }
+    
+    if (_leftData != nullptr)
+    {
+        gst_clear_sample(&_leftData->last_sample);
+        gst_clear_caps(&_leftData->last_caps);
+        gst_clear_buffer(&_leftData->shared_buffer);
+        gst_clear_object(&_leftData->conv);
+        _leftData->keyed_mutex = nullptr;
+    }
+    if (_rightData != nullptr)
+    {
+        gst_clear_sample(&_rightData->last_sample);
+        gst_clear_caps(&_rightData->last_caps);
+        gst_clear_buffer(&_rightData->shared_buffer);
+        gst_clear_object(&_rightData->conv);
+        _rightData->keyed_mutex = nullptr;
+    }
+
+    //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+    //pDebug = nullptr;
 }
 
-ID3D11Texture2D* GstAVPipeline::GetTexturePtr(bool left)
+/* ID3D11Texture2D* GstAVPipeline::GetTexturePtr(bool left)
 {
-    if (left)
+    if (left && _leftData != nullptr)
         return _leftData->texture.Get();
-    else
+    else if (!left && _rightData != nullptr)
         return _rightData->texture.Get();
-}
+    else
+        return nullptr;
+}*/
 
 
 gpointer GstAVPipeline::main_loop_func(gpointer data)

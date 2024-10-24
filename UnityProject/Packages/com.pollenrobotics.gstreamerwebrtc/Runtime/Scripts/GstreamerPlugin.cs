@@ -28,6 +28,11 @@ namespace GstreamerWebRTC
             debug = new DebugFromPlugin();
         }
 
+        void OnDestroy()
+        {
+            cleaning_thread?.Join();
+        }
+
         void Start()
         {
             if (cleaning_thread != null)
@@ -97,7 +102,7 @@ namespace GstreamerWebRTC
         void Cleanup()
         {
             renderingPlugin.Cleanup();
-            dataPlugin.Cleanup();
+            //dataPlugin.Cleanup();
         }
 
         void Update()
