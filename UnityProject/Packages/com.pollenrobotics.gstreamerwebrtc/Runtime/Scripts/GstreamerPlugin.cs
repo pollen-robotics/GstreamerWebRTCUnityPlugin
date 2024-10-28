@@ -102,7 +102,7 @@ namespace GstreamerWebRTC
         void Cleanup()
         {
             renderingPlugin.Cleanup();
-            //dataPlugin.Cleanup();
+            dataPlugin.Cleanup();
         }
 
         void Update()
