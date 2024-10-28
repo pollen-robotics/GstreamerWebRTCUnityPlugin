@@ -82,18 +82,6 @@ namespace GstreamerWebRTC
             request_stop = true;
             Close();
             webSocket?.Dispose();
-            /*task_askForList?.Dispose();
-            task_checkconnection?.Dispose();
-            task_updateMessages?.Dispose();*/
-            //CloseTasks();
-        }
-
-        void CloseTasks()
-        {
-            tasks_running = false;
-            task_askForList?.Wait();
-            task_updateMessages?.Wait();
-            task_checkconnection?.Wait();
         }
 
         public async void Connect()
@@ -244,7 +232,6 @@ namespace GstreamerWebRTC
             task_askForList?.Wait();
             task_updateMessages?.Wait();
             task_checkconnection?.Wait();
-            //CloseTasks();
         }
 
         public void RequestStop()
