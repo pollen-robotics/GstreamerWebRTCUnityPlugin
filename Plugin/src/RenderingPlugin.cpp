@@ -13,15 +13,15 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const 
     gstAVPipeline->CreatePipeline(uri, remote_peer_id);
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateTexture(unsigned int width, unsigned int height, bool left)
+extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API CreateTexture(unsigned int width, unsigned int height, bool left)
 {
-    gstAVPipeline->CreateTexture(width, height, left);
+    return gstAVPipeline->CreateTexture(width, height, left);
 }
 
-extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API GetTexturePtr(bool left)
+/* extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API GetTexturePtr(bool left)
 {
     return gstAVPipeline->GetTexturePtr(left);
-}
+}*/
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* texPtr)
 {
@@ -72,7 +72,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 {
     gstAVPipeline.reset();
     gstDataPipeline.reset();
-    gst_deinit();
+    gst_deinit(); //Move elsewhere if needed. Unity never calls this function.
 }
 
 

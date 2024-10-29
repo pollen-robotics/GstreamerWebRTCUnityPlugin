@@ -13,7 +13,7 @@ using namespace Microsoft::WRL;
 // Creates the underlying D3D11 texture using the provided unity device.
 // This texture can then be turned into a proper Unity texture on the
 // managed side using Texture2D.CreateExternalTexture()
-bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool left)
+ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool left)
 {
     auto device = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice();
     HRESULT hr = S_OK;
@@ -22,7 +22,7 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
 
     std::unique_ptr<AppData> data = std::make_unique<AppData>();
     data->avpipeline = this;
-
+    
     // Create a texture 2D that can be shared
     D3D11_TEXTURE2D_DESC desc = {};
     desc.Width = width;
@@ -36,17 +36,18 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
     desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
     // desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 
-    hr = device->CreateTexture2D(&desc, nullptr, &data->texture);
+    ComPtr<ID3D11Texture2D> texture;
+    hr = device->CreateTexture2D(&desc, nullptr, &texture);
     g_assert(SUCCEEDED(hr));
 
-    hr = data->texture.As(&data->keyed_mutex);
+    hr = texture.As(&data->keyed_mutex);
     g_assert(SUCCEEDED(hr));
 
     hr = data->keyed_mutex->AcquireSync(0, INFINITE);
     g_assert(SUCCEEDED(hr));
 
     ComPtr<IDXGIResource1> dxgi_resource;
-    hr = data->texture.As(&dxgi_resource);
+    hr = texture.As(&dxgi_resource);
     g_assert(SUCCEEDED(hr));
 
     HANDLE shared_handle = nullptr;
@@ -59,6 +60,12 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
     hr = gst_device->QueryInterface(IID_PPV_ARGS(&device1));
     g_assert(SUCCEEDED(hr));
 
+    /* if (pDebug == nullptr)
+    {
+        hr = device1->QueryInterface(IID_PPV_ARGS(&pDebug));
+        g_assert(SUCCEEDED(hr));
+    }*/
+    
     /* Open shared texture at GStreamer device side */
     ComPtr<ID3D11Texture2D> gst_texture;
     hr = device1->OpenSharedResource1(shared_handle, IID_PPV_ARGS(&gst_texture));
@@ -71,7 +78,7 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
     GstMemory* mem = gst_d3d11_allocator_alloc_wrapped(nullptr, _device, gst_texture.Get(),
                                                        /* CPU accessible (staging texture) memory size is unknown.
                                                         * Pass zero here, then GStreamer will calculate it */
-                                                       0, nullptr, nullptr);
+                                                  0, nullptr, nullptr);
     g_assert(mem);
 
     data->shared_buffer = gst_buffer_new();
@@ -80,9 +87,8 @@ bool GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool 
     if (left)
         _leftData = std::move(data);
     else
-        _rightData = std::move(data);
-
-    return true;
+        _rightData = std::move(data);    
+    return texture.Get();
 }
 
 GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data)
@@ -102,7 +108,7 @@ GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_da
     }
 
     std::lock_guard<std::mutex> lk(data->lock);
-    // data->avpipeline->Enter();
+
     /* Caps updated, recreate converter */
     if (data->last_caps && !gst_caps_is_equal(data->last_caps, caps))
         gst_clear_object(&data->conv);
@@ -335,7 +341,7 @@ GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string
         Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
     }
 
-    g_object_set(webrtcsrc, "stun-server", nullptr, nullptr);
+    g_object_set(webrtcsrc, "stun-server", nullptr, "do-retransmission", false, nullptr);
 
     g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), self);
 
@@ -469,9 +475,9 @@ GstElement* GstAVPipeline::add_webrtcsink(GstElement* pipeline, const std::strin
     gst_structure_free(meta_structure);
     g_value_unset(&meta_value);
 
-    g_object_set(webrtcsink, "stun-server", nullptr, nullptr);
+    g_object_set(webrtcsink, "stun-server", nullptr, "do-restransmission", false, nullptr);
 
-    g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), nullptr);
+    //g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), nullptr);
 
     gst_bin_add(GST_BIN(pipeline), webrtcsink);
     return webrtcsink;
@@ -600,7 +606,6 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
             Debug::Log("Could not link dynamic video pad to rtph264depay", Level::Error);
         }
         gst_object_unref(sinkpad);
-        //g_object_set(appsink, "processing-deadline", 10000000, nullptr);
         gst_element_sync_state_with_parent(rtph264depay);
         gst_element_sync_state_with_parent(h264parse);
         gst_element_sync_state_with_parent(d3d11h264dec);
@@ -645,7 +650,6 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
         //gst_element_sync_state_with_parent(avpipeline->audiomixer);
     }
     g_free(pad_name);
-    gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
 }
 
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
@@ -657,9 +661,9 @@ void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstEle
 void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
 {
     if (texture != nullptr)
-    {
+    {  
         texture->Release();
-        texture = nullptr;
+        texture = nullptr;        
     }
 }
 
@@ -717,32 +721,20 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 
 GstAVPipeline::~GstAVPipeline()
 {
-    if (_leftData != nullptr)
-    {
-        gst_clear_sample(&_leftData->last_sample);
-        gst_clear_caps(&_leftData->last_caps);
-        gst_clear_buffer(&_leftData->shared_buffer);
-        gst_clear_object(&_leftData->conv);
-        _leftData.reset(nullptr);
-    }
-    if (_rightData != nullptr)
-    {
-        gst_clear_sample(&_rightData->last_sample);
-        gst_clear_caps(&_rightData->last_caps);
-        gst_clear_buffer(&_rightData->shared_buffer);
-        gst_clear_object(&_rightData->conv);
-        _rightData.reset(nullptr);
-    }
-
     gst_clear_object(&_device);
     gst_object_unref(_device);
+    _device = nullptr;
     g_main_context_unref(main_context_);
     g_main_loop_unref(main_loop_);
+    main_loop_ = nullptr;
     for (auto& plugin : preloaded_plugins)
     {
         gst_object_unref(plugin);
     }
     preloaded_plugins.clear();
+
+    //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+    //pDebug = nullptr;
 }
 
 gboolean GstAVPipeline::dumpLatencyCallback(GstAVPipeline* self)
@@ -789,7 +781,7 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
         Debug::Log("Audio sending elements could not be linked.", Level::Error);
     }
 
-    /* GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
+    /*GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
     audiomixer = add_audiomixer(_pipeline);
     GstElement* audioconvert2 = add_audioconvert(_pipeline);
     GstElement* audioresample = add_audioresample(_pipeline);
@@ -831,7 +823,8 @@ void GstAVPipeline::CreateDevice()
         auto luid = gst_d3d11_luid_to_int64(&adapter_desc.AdapterLuid);
 
         /* This device will be used by our pipeline */
-        _device = gst_d3d11_device_new_for_adapter_luid(luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT);
+        _device =
+            gst_d3d11_device_new_for_adapter_luid(luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT /* | D3D11_CREATE_DEVICE_DEBUG*/);
         g_assert(_device);
     }
     else
@@ -847,7 +840,9 @@ void GstAVPipeline::DestroyPipeline()
 
     if (thread_ != nullptr)
     {
+        Debug::Log("Wait for av thread to close ...", Level::Info);
         g_thread_join(thread_);
+        g_thread_unref(thread_);
         thread_ = nullptr;
     }
 
@@ -861,16 +856,27 @@ void GstAVPipeline::DestroyPipeline()
     {
         Debug::Log("GstAVPipeline pipeline already released", Level::Warning);
     }
-}
+    
+    if (_leftData != nullptr)
+    {
+        gst_clear_sample(&_leftData->last_sample);
+        gst_clear_caps(&_leftData->last_caps);
+        gst_clear_buffer(&_leftData->shared_buffer);
+        gst_clear_object(&_leftData->conv);
+        _leftData->keyed_mutex = nullptr;
+    }
+    if (_rightData != nullptr)
+    {
+        gst_clear_sample(&_rightData->last_sample);
+        gst_clear_caps(&_rightData->last_caps);
+        gst_clear_buffer(&_rightData->shared_buffer);
+        gst_clear_object(&_rightData->conv);
+        _rightData->keyed_mutex = nullptr;
+    }
 
-ID3D11Texture2D* GstAVPipeline::GetTexturePtr(bool left)
-{
-    if (left)
-        return _leftData->texture.Get();
-    else
-        return _rightData->texture.Get();
+    //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+    //pDebug = nullptr;
 }
-
 
 gpointer GstAVPipeline::main_loop_func(gpointer data)
 {
@@ -933,7 +939,7 @@ gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
             break;
         case GST_MESSAGE_LATENCY:
         {
-            Debug::Log("Redistribute latency...");
+            Debug::Log("Redistribute latency av...");
             gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
             GstAVPipeline::dumpLatencyCallback(self);
             break;
