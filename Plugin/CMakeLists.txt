@@ -22,6 +22,8 @@ set(SOURCE_FILES
 	src/GstBasePipeline.cpp
 	src/GstAVPipeline.cpp
 	src/GstAVPipeline.h
+	src/GstMicPipeline.cpp
+	src/GstMicPipeline.h
 	src/GstDataPipeline.cpp
 	src/GstDataPipeline.h
 	

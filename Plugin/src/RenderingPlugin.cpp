@@ -6,15 +6,18 @@
 #include <assert.h>
 #include "GstAVPipeline.h"
 #include "GstDataPipeline.h"
+#include "GstMicPipeline.h"
 
 static std::unique_ptr<GstAVPipeline> gstAVPipeline = nullptr;
 static std::unique_ptr<GstDataPipeline> gstDataPipeline = nullptr;
+static std::unique_ptr<GstMicPipeline> gstMicPipeline = nullptr;
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice() { gstAVPipeline->CreateDevice(); }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id)
 {
     gstAVPipeline->CreatePipeline(uri, remote_peer_id);
+    gstMicPipeline->CreatePipeline(uri, remote_peer_id);
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API CreateTexture(unsigned int width, unsigned int height, bool left)
@@ -32,7 +35,11 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* 
     gstAVPipeline->ReleaseTexture((ID3D11Texture2D*)texPtr);
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline() { gstAVPipeline->DestroyPipeline(); }
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline() 
+{
+    gstAVPipeline->DestroyPipeline(); 
+    gstMicPipeline->DestroyPipeline();
+}
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyDataPipeline() { gstDataPipeline->DestroyPipeline(); }
 
@@ -69,13 +76,12 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 {
     gst_init(nullptr, nullptr);
     gstAVPipeline = std::make_unique<GstAVPipeline>(unityInterfaces);
+    gstMicPipeline = std::make_unique<GstMicPipeline>();
     gstDataPipeline = std::make_unique<GstDataPipeline>();
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 {
-    gstAVPipeline.reset();
-    gstDataPipeline.reset();
     gst_deinit(); //Move elsewhere if needed. Unity never calls this function.
 }
 

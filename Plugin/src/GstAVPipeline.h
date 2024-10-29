@@ -52,7 +52,6 @@ public:
 private:
     static void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data);
     static void webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata);
-    static void consumer_added_callback(GstElement* consumer_id, gchararray webrtcbin, GstElement* arg1, gpointer udata);
     
     static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
@@ -71,9 +70,4 @@ private:
     static GstElement* add_wasapi2sink(GstElement* pipeline);
     static GstElement* add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
                                      GstAVPipeline* self);
-    static GstElement* add_wasapi2src(GstElement* pipeline);
-    static GstElement* add_opusenc(GstElement* pipeline);
-    static GstElement* add_audio_caps_capsfilter(GstElement* pipeline);
-    static GstElement* add_webrtcsink(GstElement* pipeline, const std::string& uri);
-    static GstElement* add_webrtcdsp(GstElement* pipeline);
 };
