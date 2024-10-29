@@ -4,27 +4,21 @@
 
 #pragma once
 #include "Unity/IUnityInterface.h"
+#include "GstBasePipeline.h"
 #include <d3d11.h>
 #include <gst/app/app.h>
 #include <gst/d3d11/gstd3d11.h>
-#include <gst/gst.h>
 #include <mutex>
 #include <vector>
 #include <wrl.h>
 
-class GstAVPipeline
+class GstAVPipeline : GstBasePipeline
 {
 
 private:
     std::vector<GstPlugin*> preloaded_plugins;
-    //GstElement* audiomixer = nullptr;
 
-    GstElement* _pipeline = nullptr;
     GstD3D11Device* _device = nullptr;
-    GMainContext* main_context_ = nullptr;
-    GMainLoop* main_loop_ = nullptr;
-    GThread* thread_ = nullptr;
-    //Microsoft::WRL::ComPtr<ID3D11Debug> pDebug = nullptr;
 
     IUnityInterfaces* _s_UnityInterfaces = nullptr;
     GstVideoInfo _render_info;
@@ -50,7 +44,7 @@ public:
 
     void CreatePipeline(const char* uri, const char* remote_peer_id);
     void CreateDevice();
-    void DestroyPipeline();
+    void DestroyPipeline() override;
 
     ID3D11Texture2D* CreateTexture(unsigned int width, unsigned int height, bool left = true);
     void ReleaseTexture(ID3D11Texture2D* texture);
@@ -62,11 +56,7 @@ private:
     
     static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
-    static gboolean dumpLatencyCallback(GstAVPipeline* self);
-
-    static gpointer main_loop_func(gpointer data);
-    static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
-    static GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
+    GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data) override;
 
     static GstElement* add_rtph264depay(GstElement* pipeline);
     static GstElement* add_h264parse(GstElement* pipeline);
@@ -85,10 +75,5 @@ private:
     static GstElement* add_opusenc(GstElement* pipeline);
     static GstElement* add_audio_caps_capsfilter(GstElement* pipeline);
     static GstElement* add_webrtcsink(GstElement* pipeline, const std::string& uri);
-    static GstElement* add_audiotestsrc(GstElement* pipeline);
-    static GstElement* add_audiomixer(GstElement* pipeline);
-    static GstElement* add_webrtcechoprobe(GstElement* pipeline);
     static GstElement* add_webrtcdsp(GstElement* pipeline);
-    static GstElement* add_fakesink(GstElement* pipeline);
-    static GstElement* add_tee(GstElement* pipeline);
 };

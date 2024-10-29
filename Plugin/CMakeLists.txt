@@ -18,6 +18,8 @@ set(SOURCE_FILES
     src/RenderingPlugin.cpp
 	src/DebugLog.cpp
 	src/DebugLog.h
+	src/GstBasePipeline.h
+	src/GstBasePipeline.cpp
 	src/GstAVPipeline.cpp
 	src/GstAVPipeline.h
 	src/GstDataPipeline.cpp
