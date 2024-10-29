@@ -7,60 +7,28 @@
 #include <gst/sdp/sdp.h>
 #include <gst/webrtc/webrtc.h>
 
-GstDataPipeline::GstDataPipeline()
-{
-    main_context_ = g_main_context_new();
-    main_loop_ = g_main_loop_new(main_context_, FALSE);
+GstDataPipeline::GstDataPipeline() : GstBasePipeline("DataPipeline") {
 }
 
-GstDataPipeline::~GstDataPipeline()
-{
-    g_main_context_unref(main_context_);
-    g_main_loop_unref(main_loop_);
-}
 
 void GstDataPipeline::CreatePipeline() 
 {
     Debug::Log("GstDataPipeline create pipeline", Level::Info);
-    _pipeline = gst_pipeline_new("Plugin Data Pipeline");
+    GstBasePipeline::CreatePipeline();
 
-    _webrtcbin = add_webrtcbin();
-    auto state = gst_element_set_state(_pipeline, GstState::GST_STATE_READY);    
+    webrtcbin_ = add_webrtcbin();
+    auto state = gst_element_set_state(this->pipeline_, GstState::GST_STATE_READY);    
 
-    thread_ = g_thread_new("bus thread", main_loop_func, this);
-    if (!thread_)
-    {
-        Debug::Log("Failed to create GLib main thread", Level::Error);
-    }
+    CreateBusThread();
 }
 
 void GstDataPipeline::DestroyPipeline()
 {
-    gst_webrtc_data_channel_close(_channel_service);
-    gst_webrtc_data_channel_close(_channel_command);
-    gst_webrtc_data_channel_close(_channel_audit);
+    gst_webrtc_data_channel_close(channel_service_);
+    gst_webrtc_data_channel_close(channel_command_);
+    gst_webrtc_data_channel_close(channel_audit_);
 
-    if (main_loop_ != nullptr)
-        g_main_loop_quit(main_loop_);
-
-    if (thread_ != nullptr)
-    {
-        Debug::Log("Wait for data thread to close ...", Level::Info);
-        g_thread_join(thread_);
-        g_thread_unref(thread_);
-        thread_ = nullptr;
-    }
-
-     if (_pipeline != nullptr)
-    {
-        Debug::Log("GstDataPipeline pipeline released", Level::Info);
-        gst_object_unref(_pipeline);
-        _pipeline = nullptr;
-    }
-    else
-    {
-        Debug::Log("GstDataPipeline pipeline already released", Level::Warning);
-    }
+    GstBasePipeline::DestroyPipeline();
 }
 
 void GstDataPipeline::SetOffer(const char* sdp_offer) 
@@ -74,9 +42,9 @@ void GstDataPipeline::SetOffer(const char* sdp_offer)
 
 
     GstPromise* promise =
-        gst_promise_new_with_change_func(on_offer_set, _webrtcbin, nullptr);
+        gst_promise_new_with_change_func(on_offer_set, webrtcbin_, nullptr);
 
-    g_signal_emit_by_name(_webrtcbin, "set-remote-description", offer, promise, nullptr);
+    g_signal_emit_by_name(webrtcbin_, "set-remote-description", offer, promise, nullptr);
 
     //gst_webrtc_session_description_free(offer); //raise breakpoint?
     gst_sdp_message_free(sdpmsg);
@@ -86,7 +54,7 @@ void GstDataPipeline::SetOffer(const char* sdp_offer)
 void GstDataPipeline::SetICECandidate(const char* candidate, int mline_index) 
 {
     Debug::Log("Add ICE Candidate: " + std::string(candidate) + " "+ std::to_string(mline_index));
-    g_signal_emit_by_name(_webrtcbin, "add-ice-candidate", mline_index, candidate);
+    g_signal_emit_by_name(webrtcbin_, "add-ice-candidate", mline_index, candidate);
 }
 
 void GstDataPipeline::on_offer_set(GstPromise* promise, gpointer user_data)
@@ -202,14 +170,19 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     GstDataPipeline* self = static_cast<GstDataPipeline*>(udata);
     gchar* label = nullptr;
     g_object_get(channel, "label", &label, nullptr);
-    std::string label_str = std::string(label);
+    if (label == nullptr)
+    {
+        Debug::Log("Channel has no label", Level::Error);
+        return;
+    }
+    const std::string label_str = std::string(label);
     g_free(label);
 
     Debug::Log("Received data channel : " + label_str);
 
     if (label_str == CHANNEL_SERVICE)
     {
-        self->_channel_service = channel;        
+        self->channel_service_ = channel;        
 
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_service), nullptr);
 
@@ -228,7 +201,7 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     }
     else if (starts_with(label_str, CHANNEL_REACHY_COMMAND))
     {
-        self->_channel_command = channel;
+        self->channel_command_ = channel;
     }
     else
     {
@@ -248,16 +221,16 @@ void GstDataPipeline::send_byte_array(GstWebRTCDataChannel* channel, const unsig
 
 void GstDataPipeline::send_byte_array_channel_service(const unsigned char* data, size_t size) 
 {
-    if (_channel_service != nullptr)
-        send_byte_array(_channel_service, data, size); 
+    if (channel_service_ != nullptr)
+        send_byte_array(channel_service_, data, size); 
     else
         Debug::Log("channel service is not initialized ", Level::Warning);
 }
 
 void GstDataPipeline::send_byte_array_channel_command(const unsigned char* data, size_t size) 
 {
-    if (_channel_command != nullptr)
-        send_byte_array(_channel_command, data, size);
+    if (channel_command_ != nullptr)
+        send_byte_array(channel_command_, data, size);
     else
         Debug::Log("channel command is not initialized ", Level::Warning);
 }
@@ -309,101 +282,10 @@ GstElement* GstDataPipeline::add_webrtcbin()
     g_signal_connect(webrtcbin, "on-data-channel", G_CALLBACK(on_data_channel), this);
     g_signal_connect(webrtcbin, "notify::ice-gathering-state", G_CALLBACK(on_ice_gathering_state_notify), nullptr);
 
-    gst_bin_add(GST_BIN(this->_pipeline), webrtcbin);
+    gst_bin_add(GST_BIN(this->pipeline_), webrtcbin);
     return webrtcbin;
 }
 
-gpointer GstDataPipeline::main_loop_func(gpointer data)
-{
-    Debug::Log("Entering main loop");
-    GstDataPipeline* self = static_cast<GstDataPipeline*>(data);
-
-    g_main_context_push_thread_default(self->main_context_);
-
-    GstBus* bus = gst_element_get_bus(self->_pipeline);
-    gst_bus_add_watch(bus, busHandler, self);
-
-    auto state = gst_element_set_state(self->_pipeline, GstState::GST_STATE_PLAYING);
-    if (state == GstStateChangeReturn::GST_STATE_CHANGE_FAILURE)
-    {
-        Debug::Log("Cannot set pipeline to playing state", Level::Error);
-        gst_object_unref(self->_pipeline);
-        self->_pipeline = nullptr;
-        return nullptr;
-    }
-
-    g_main_loop_run(self->main_loop_);
-
-    gst_element_set_state(self->_pipeline, GST_STATE_NULL);
-
-    gst_bus_remove_watch(bus);
-    gst_object_unref(bus);
-    g_main_context_pop_thread_default(self->main_context_);
-    Debug::Log("Quitting main loop");
-
-    return nullptr;
-}
-
-gboolean GstDataPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
-{
-    auto self = (GstDataPipeline*)data;
-
-    switch (GST_MESSAGE_TYPE(msg))
-    {
-        case GST_MESSAGE_ERROR:
-        {
-            GError* err;
-            gchar* dbg;
-
-            gst_message_parse_error(msg, &err, &dbg);
-            Debug::Log(err->message, Level::Error);
-            if (dbg != nullptr)
-                Debug::Log(dbg);
-            g_clear_error(&err);
-            g_free(dbg);
-            g_main_loop_quit(self->main_loop_);
-            break;
-        }
-        case GST_MESSAGE_EOS:
-            Debug::Log("Got EOS");
-            g_main_loop_quit(self->main_loop_);
-            break;
-        case GST_MESSAGE_LATENCY:
-        {
-            Debug::Log("Redistribute latency data...");
-            gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
-            GstDataPipeline::dumpLatencyCallback(self);
-            break;
-        }
-        default:
-            //Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
-            break;
-    }
-
-    return G_SOURCE_CONTINUE;
-}
-
-gboolean GstDataPipeline::dumpLatencyCallback(GstDataPipeline* self) 
-{
-    if (self)
-    {
-        GstQuery* query = gst_query_new_latency();
-        gboolean res = gst_element_query(self->_pipeline, query);
-        if (res)
-        {
-            gboolean live;
-            GstClockTime min_latency, max_latency;
-            gst_query_parse_latency(query, &live, &min_latency, &max_latency);
-            // Log or std::cout your latency here
-            std::string msg = "Pipeline latency: live=" + std::to_string(live) + ", min=" + std::to_string(min_latency) +
-                              ", max=" + std::to_string(max_latency);
-            Debug::Log(msg);
-        }
-        gst_query_unref(query);
-        return true;
-    }
-    return false;
-}
 
 // Create a callback delegate
 void RegisterICECallback(FuncCallBackICE cb) { callbackICEInstance = cb; }

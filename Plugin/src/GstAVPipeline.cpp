@@ -22,7 +22,8 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
     auto device = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice();
     HRESULT hr = S_OK;
 
-    gst_video_info_set_format(&_render_info, GST_VIDEO_FORMAT_RGBA, width, height);
+    if (_render_info.width != width)
+        gst_video_info_set_format(&_render_info, GST_VIDEO_FORMAT_RGBA, width, height);
 
     std::unique_ptr<AppData> data = std::make_unique<AppData>();
     data->avpipeline = this;
@@ -559,16 +560,11 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
         GstElement* audioconvert = add_audioconvert(avpipeline->pipeline_);
         GstElement* audioresample = add_audioresample(avpipeline->pipeline_);
         GstElement* wasapi2sink = add_wasapi2sink(avpipeline->pipeline_);
-       // GstElement* tee = add_tee(avpipeline->_pipeline);
 
-        if (!gst_element_link_many(rtpopusdepay, opusdec, /* tee,*/ queue, audioconvert, audioresample, wasapi2sink, nullptr))
+        if (!gst_element_link_many(rtpopusdepay, opusdec, queue, audioconvert, audioresample, wasapi2sink, nullptr))
         {
             Debug::Log("Audio elements could not be linked.", Level::Error);
         }
-
-        /* GstElement* queue2 = add_queue(avpipeline->_pipeline);
-        if (!gst_element_link_many(tee, queue2, avpipeline->audiomixer, nullptr))
-            Debug::Log("Received audio could not be linked to audiomixer.", Level::Error);*/
 
         GstPad* sinkpad = gst_element_get_static_pad(rtpopusdepay, "sink");
         if (gst_pad_link(new_pad, sinkpad) != GST_PAD_LINK_OK)
@@ -579,13 +575,10 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 
         gst_element_sync_state_with_parent(rtpopusdepay);
         gst_element_sync_state_with_parent(opusdec);
-        //gst_element_sync_state_with_parent(tee);
         gst_element_sync_state_with_parent(queue);
         gst_element_sync_state_with_parent(audioconvert);
         gst_element_sync_state_with_parent(audioresample);
         gst_element_sync_state_with_parent(wasapi2sink);
-        //gst_element_sync_state_with_parent(queue2);
-        //gst_element_sync_state_with_parent(avpipeline->audiomixer);
     }
     g_free(pad_name);
 }
@@ -607,6 +600,7 @@ void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
 
 GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : GstBasePipeline("AVPipeline"), _s_UnityInterfaces(s_UnityInterfaces)
 {
+    //preload plugins before Unity XR plugin
     preloaded_plugins.push_back(gst_plugin_load_by_name("rswebrtc"));
     if (!preloaded_plugins.back())
     {
@@ -652,6 +646,8 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : GstBasePipel
     {
         Debug::Log("Failed to load 'srtp' plugin", Level::Error);
     }
+
+    _render_info = GstVideoInfo();
 }
 
 GstAVPipeline::~GstAVPipeline()
