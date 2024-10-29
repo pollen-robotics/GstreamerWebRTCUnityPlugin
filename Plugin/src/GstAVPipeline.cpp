@@ -37,17 +37,17 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
     // desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 
     ComPtr<ID3D11Texture2D> texture;
-    hr = device->CreateTexture2D(&desc, nullptr, &/* data->*/texture);
+    hr = device->CreateTexture2D(&desc, nullptr, &texture);
     g_assert(SUCCEEDED(hr));
 
-    hr = /* data->*/texture.As(&data->keyed_mutex);
+    hr = texture.As(&data->keyed_mutex);
     g_assert(SUCCEEDED(hr));
 
     hr = data->keyed_mutex->AcquireSync(0, INFINITE);
     g_assert(SUCCEEDED(hr));
 
     ComPtr<IDXGIResource1> dxgi_resource;
-    hr = /* data->*/texture.As(&dxgi_resource);
+    hr = texture.As(&dxgi_resource);
     g_assert(SUCCEEDED(hr));
 
     HANDLE shared_handle = nullptr;
@@ -85,18 +85,10 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
     gst_buffer_append_memory(data->shared_buffer, mem);
 
     if (left)
-    {
         _leftData = std::move(data);
-        //return _leftData->texture.Get();
-
-    }
     else
-    {
-        _rightData = std::move(data);
-       // return _rightData->texture.Get();
-    }
+        _rightData = std::move(data);    
     return texture.Get();
-    //return true;
 }
 
 GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data)
@@ -116,7 +108,7 @@ GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_da
     }
 
     std::lock_guard<std::mutex> lk(data->lock);
-    // data->avpipeline->Enter();
+
     /* Caps updated, recreate converter */
     if (data->last_caps && !gst_caps_is_equal(data->last_caps, caps))
         gst_clear_object(&data->conv);
@@ -658,7 +650,6 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
         //gst_element_sync_state_with_parent(avpipeline->audiomixer);
     }
     g_free(pad_name);
-    //gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
 }
 
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
@@ -886,17 +877,6 @@ void GstAVPipeline::DestroyPipeline()
     //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
     //pDebug = nullptr;
 }
-
-/* ID3D11Texture2D* GstAVPipeline::GetTexturePtr(bool left)
-{
-    if (left && _leftData != nullptr)
-        return _leftData->texture.Get();
-    else if (!left && _rightData != nullptr)
-        return _rightData->texture.Get();
-    else
-        return nullptr;
-}*/
-
 
 gpointer GstAVPipeline::main_loop_func(gpointer data)
 {

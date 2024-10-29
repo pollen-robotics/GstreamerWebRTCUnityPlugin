@@ -30,7 +30,6 @@ private:
         GstCaps* last_caps = nullptr;
         std::mutex lock;
         GstSample* last_sample = nullptr;
-        //Microsoft::WRL::ComPtr<ID3D11Texture2D> texture = nullptr;
         Microsoft::WRL::ComPtr<IDXGIKeyedMutex> keyed_mutex = nullptr;
         GstBuffer* shared_buffer = nullptr;
         GstD3D11Converter* conv = nullptr;
@@ -43,9 +42,7 @@ public:
     GstAVPipeline(IUnityInterfaces* s_UnityInterfaces);
     ~GstAVPipeline();
 
-    //ID3D11Texture2D* GetTexturePtr(bool left = true);
     void Draw(bool left);
-    // void EndDraw(bool left);
 
     void CreatePipeline(const char* uri, const char* remote_peer_id);
     void CreateDevice();
