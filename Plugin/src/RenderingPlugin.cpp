@@ -72,7 +72,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 {
     gstAVPipeline.reset();
     gstDataPipeline.reset();
-    gst_deinit();
+    gst_deinit(); //Move elsewhere if needed. Unity never calls this function.
 }
 
 

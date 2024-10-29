@@ -60,8 +60,11 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
     hr = gst_device->QueryInterface(IID_PPV_ARGS(&device1));
     g_assert(SUCCEEDED(hr));
 
-    //hr = device1->QueryInterface(IID_PPV_ARGS(&pDebug));
-    //g_assert(SUCCEEDED(hr));
+    /* if (pDebug == nullptr)
+    {
+        hr = device1->QueryInterface(IID_PPV_ARGS(&pDebug));
+        g_assert(SUCCEEDED(hr));
+    }*/
     
     /* Open shared texture at GStreamer device side */
     ComPtr<ID3D11Texture2D> gst_texture;
@@ -346,7 +349,7 @@ GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string
         Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
     }
 
-    g_object_set(webrtcsrc, "stun-server", nullptr, nullptr);
+    g_object_set(webrtcsrc, "stun-server", nullptr, "do-retransmission", false, nullptr);
 
     g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), self);
 
@@ -480,9 +483,9 @@ GstElement* GstAVPipeline::add_webrtcsink(GstElement* pipeline, const std::strin
     gst_structure_free(meta_structure);
     g_value_unset(&meta_value);
 
-    g_object_set(webrtcsink, "stun-server", nullptr, nullptr);
+    g_object_set(webrtcsink, "stun-server", nullptr, "do-restransmission", false, nullptr);
 
-    g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), nullptr);
+    //g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), nullptr);
 
     gst_bin_add(GST_BIN(pipeline), webrtcsink);
     return webrtcsink;
@@ -611,7 +614,6 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
             Debug::Log("Could not link dynamic video pad to rtph264depay", Level::Error);
         }
         gst_object_unref(sinkpad);
-        //g_object_set(appsink, "processing-deadline", 10000000, nullptr);
         gst_element_sync_state_with_parent(rtph264depay);
         gst_element_sync_state_with_parent(h264parse);
         gst_element_sync_state_with_parent(d3d11h264dec);
@@ -656,7 +658,7 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
         //gst_element_sync_state_with_parent(avpipeline->audiomixer);
     }
     g_free(pad_name);
-    gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
+    //gst_bin_recalculate_latency(GST_BIN(avpipeline->_pipeline));
 }
 
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
@@ -728,38 +730,20 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : _s_UnityInte
 
 GstAVPipeline::~GstAVPipeline()
 {
-    /* if (_leftData != nullptr)
-    {
-        gst_clear_sample(&_leftData->last_sample);
-        gst_clear_caps(&_leftData->last_caps);
-        gst_clear_buffer(&_leftData->shared_buffer);
-        gst_clear_object(&_leftData->conv);
-        //_leftData->avpipeline = nullptr;
-        //_leftData->keyed_mutex->Release();
-        //_leftData->texture->Release();
-        _leftData->keyed_mutex = nullptr;
-        //_leftData->texture = nullptr;
-       // _leftData.reset(nullptr);
-    }
-    if (_rightData != nullptr)
-    {
-        gst_clear_sample(&_rightData->last_sample);
-        gst_clear_caps(&_rightData->last_caps);
-        gst_clear_buffer(&_rightData->shared_buffer);
-        gst_clear_object(&_rightData->conv);
-        //_rightData.reset(nullptr);
-        _rightData->keyed_mutex = nullptr;
-    }*/
-
     gst_clear_object(&_device);
     gst_object_unref(_device);
+    _device = nullptr;
     g_main_context_unref(main_context_);
     g_main_loop_unref(main_loop_);
+    main_loop_ = nullptr;
     for (auto& plugin : preloaded_plugins)
     {
         gst_object_unref(plugin);
     }
     preloaded_plugins.clear();
+
+    //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+    //pDebug = nullptr;
 }
 
 gboolean GstAVPipeline::dumpLatencyCallback(GstAVPipeline* self)
@@ -806,7 +790,7 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
         Debug::Log("Audio sending elements could not be linked.", Level::Error);
     }
 
-    /* GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
+    /*GstElement* audiotestsrc = add_audiotestsrc(_pipeline);
     audiomixer = add_audiomixer(_pipeline);
     GstElement* audioconvert2 = add_audioconvert(_pipeline);
     GstElement* audioresample = add_audioresample(_pipeline);
@@ -899,7 +883,7 @@ void GstAVPipeline::DestroyPipeline()
         _rightData->keyed_mutex = nullptr;
     }
 
-    //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+    //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
     //pDebug = nullptr;
 }
 
@@ -975,7 +959,7 @@ gboolean GstAVPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
             break;
         case GST_MESSAGE_LATENCY:
         {
-            Debug::Log("Redistribute latency...");
+            Debug::Log("Redistribute latency av...");
             gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
             GstAVPipeline::dumpLatencyCallback(self);
             break;

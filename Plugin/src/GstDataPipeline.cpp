@@ -366,7 +366,7 @@ gboolean GstDataPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data
             break;
         case GST_MESSAGE_LATENCY:
         {
-            Debug::Log("Redistribute latency...");
+            Debug::Log("Redistribute latency data...");
             gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
             GstDataPipeline::dumpLatencyCallback(self);
             break;
