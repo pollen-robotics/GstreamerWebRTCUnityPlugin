@@ -45,14 +45,7 @@ namespace GstreamerWebRTC
 #else
         [DllImport("UnityGStreamerPlugin")]
 #endif
-        private static extern IntPtr GetTexturePtr(bool left);
-
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
-        [DllImport("UnityGStreamerPlugin")]
-#endif
-        private static extern void CreateTexture(uint width, uint height, bool left);
+        private static extern IntPtr CreateTexture(uint width, uint height, bool left);
 
 #if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
     [DllImport("__Internal")]
@@ -121,8 +114,7 @@ namespace GstreamerWebRTC
 
         Texture CreateRenderTexture(bool left, ref IntPtr textureNativePtr)
         {
-            CreateTexture(width, height, left);
-            textureNativePtr = GetTexturePtr(left);
+            textureNativePtr = CreateTexture(width, height, left);
 
             if (textureNativePtr != IntPtr.Zero)
             {
@@ -155,7 +147,7 @@ namespace GstreamerWebRTC
         public void Cleanup()
         {
             Debug.Log("Cleanup");
-            //_command = null;
+
             _autoreconnect = false;
             _signalling.Close();
             _signalling.RequestStop();
@@ -179,7 +171,6 @@ namespace GstreamerWebRTC
         {
             if (_started)
             {
-                //CommandBuffer _command = new CommandBuffer();
                 _command.Clear();
                 _command.IssuePluginEvent(GetRenderEventFunc(), 1);
                 Graphics.ExecuteCommandBuffer(_command);

@@ -36,12 +36,18 @@ void GstDataPipeline::CreatePipeline()
 
 void GstDataPipeline::DestroyPipeline()
 {
+    gst_webrtc_data_channel_close(_channel_service);
+    gst_webrtc_data_channel_close(_channel_command);
+    gst_webrtc_data_channel_close(_channel_audit);
+
     if (main_loop_ != nullptr)
         g_main_loop_quit(main_loop_);
 
     if (thread_ != nullptr)
     {
+        Debug::Log("Wait for data thread to close ...", Level::Info);
         g_thread_join(thread_);
+        g_thread_unref(thread_);
         thread_ = nullptr;
     }
 
@@ -204,7 +210,6 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     if (label_str == CHANNEL_SERVICE)
     {
         self->_channel_service = channel;        
-        //_channel_service = channel;
 
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_service), nullptr);
 
@@ -234,7 +239,6 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
 
 void GstDataPipeline::send_byte_array(GstWebRTCDataChannel* channel, const unsigned char* data, size_t size)
 {
-    g_assert(channel != nullptr);
     g_assert(data != nullptr);
     GBytes* bytes = g_bytes_new(data, size);
 
@@ -246,12 +250,16 @@ void GstDataPipeline::send_byte_array_channel_service(const unsigned char* data,
 {
     if (_channel_service != nullptr)
         send_byte_array(_channel_service, data, size); 
+    else
+        Debug::Log("channel service is not initialized ", Level::Warning);
 }
 
 void GstDataPipeline::send_byte_array_channel_command(const unsigned char* data, size_t size) 
 {
     if (_channel_command != nullptr)
         send_byte_array(_channel_command, data, size);
+    else
+        Debug::Log("channel command is not initialized ", Level::Warning);
 }
 
 void GstDataPipeline::on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
@@ -362,13 +370,13 @@ gboolean GstDataPipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data
             break;
         case GST_MESSAGE_LATENCY:
         {
-            Debug::Log("Redistribute latency...");
+            Debug::Log("Redistribute latency data...");
             gst_bin_recalculate_latency(GST_BIN(self->_pipeline));
             GstDataPipeline::dumpLatencyCallback(self);
             break;
         }
         default:
-            Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
+            //Debug::Log(GST_MESSAGE_TYPE_NAME(msg));
             break;
     }
 
