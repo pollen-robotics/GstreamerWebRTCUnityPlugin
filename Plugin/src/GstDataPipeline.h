@@ -3,6 +3,7 @@
  LICENSE file in the root directory of this source tree. */
 
 #pragma once
+#include "GstBasePipeline.h"
 #include <gst/gst.h>
 #include <gst/webrtc/datachannel.h>
 #include <string>
@@ -35,28 +36,23 @@ extern "C"
     DLLExport void RegisterChannelAuditDataCallback(FuncCallBackChannelData cb);
 }
 
-class GstDataPipeline
+class GstDataPipeline : GstBasePipeline
 {
 private:
-    GstElement* _pipeline = nullptr;
-    GstElement* _webrtcbin = nullptr;
-    GThread* thread_ = nullptr;
-    GMainContext* main_context_ = nullptr;
-    GMainLoop* main_loop_ = nullptr;
+    GstElement* webrtcbin_ = nullptr;
     static const std::string CHANNEL_SERVICE;
     static const std::string CHANNEL_REACHY_STATE;
     static const std::string CHANNEL_REACHY_COMMAND;
     static const std::string CHANNEL_REACHY_AUDIT;
-    GstWebRTCDataChannel* _channel_service = nullptr;    
-    GstWebRTCDataChannel* _channel_command = nullptr;
-    GstWebRTCDataChannel* _channel_audit = nullptr;
+    GstWebRTCDataChannel* channel_service_ = nullptr;    
+    GstWebRTCDataChannel* channel_command_ = nullptr;
+    GstWebRTCDataChannel* channel_audit_ = nullptr;
 
 
 public:
     GstDataPipeline();
-    ~GstDataPipeline();
     void CreatePipeline();
-    void DestroyPipeline();
+    void DestroyPipeline() override;
     void SetOffer(const char* sdp_offer);
     void SetICECandidate(const char* candidate, int mline_index);
     void send_byte_array_channel_service(const unsigned char * data, size_t size);
@@ -64,9 +60,6 @@ public:
 
 private:
     GstElement* add_webrtcbin();
-    static gpointer main_loop_func(gpointer data);
-    static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
-    static gboolean dumpLatencyCallback(GstDataPipeline* self);
     static void on_ice_candidate(GstElement* webrtcbin, guint mline_index, gchararray candidate, gpointer user_data);
     static void on_data_channel(GstElement* webrtcbin, GstWebRTCDataChannel* channel, gpointer udata);
     //static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
