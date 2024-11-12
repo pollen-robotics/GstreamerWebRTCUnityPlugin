@@ -435,7 +435,7 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
 {
     Debug::Log("Configure webrtcbin", Level::Info);
-    g_object_set(webrtcbin, "latency", 10, nullptr);
+    g_object_set(webrtcbin, "latency", 1, nullptr);
 }
 
 void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
@@ -545,8 +545,8 @@ void GstAVPipeline::CreateDevice()
         auto luid = gst_d3d11_luid_to_int64(&adapter_desc.AdapterLuid);
 
         /* This device will be used by our pipeline */
-        _device =
-            gst_d3d11_device_new_for_adapter_luid(luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT /* | D3D11_CREATE_DEVICE_DEBUG*/);
+        _device = gst_d3d11_device_new_for_adapter_luid(
+            luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT /* | D3D11_CREATE_DEVICE_DEBUG*/);
         g_assert(_device);
     }
     else
