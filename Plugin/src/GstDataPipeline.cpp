@@ -28,6 +28,10 @@ void GstDataPipeline::DestroyPipeline()
     gst_webrtc_data_channel_close(channel_command_);
     gst_webrtc_data_channel_close(channel_audit_);
 
+    channel_service_ = nullptr;
+    channel_audit_ = nullptr;
+    channel_command_ = nullptr;
+
     GstBasePipeline::DestroyPipeline();
 }
 
@@ -186,10 +190,10 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
 
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_service), nullptr);
 
-        if (callbackChannelServiceOpenInstance != nullptr)
-        {
-            callbackChannelServiceOpenInstance();
-        }   
+        if (callbackChannelServiceOpenInstance != nullptr)        
+            callbackChannelServiceOpenInstance();   
+        else
+            Debug::Log("Fails to notify opening of service channel", Level::Warning);
     }
     else if (starts_with(label_str,CHANNEL_REACHY_STATE))
     {
@@ -202,6 +206,10 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     else if (starts_with(label_str, CHANNEL_REACHY_COMMAND))
     {
         self->channel_command_ = channel;
+        if (callbackChannelCommandOpenInstance != nullptr)        
+            callbackChannelCommandOpenInstance();    
+        else
+            Debug::Log("Fails to notify opening of command channel", Level::Warning);
     }
     else
     {
@@ -290,7 +298,8 @@ GstElement* GstDataPipeline::add_webrtcbin()
 // Create a callback delegate
 void RegisterICECallback(FuncCallBackICE cb) { callbackICEInstance = cb; }
 void RegisterSDPCallback(FuncCallBackSDP cb) { callbackSDPInstance = cb; }
-void RegisterChannelServiceOpenCallback(FuncCallBackChannelServiceOpen cb) { callbackChannelServiceOpenInstance = cb; }
+void RegisterChannelCommandOpenCallback(FuncCallBackChannelOpen cb) { callbackChannelCommandOpenInstance = cb; }
+void RegisterChannelServiceOpenCallback(FuncCallBackChannelOpen cb) { callbackChannelServiceOpenInstance = cb; }
 void RegisterChannelServiceDataCallback(FuncCallBackChannelData cb) { callbackChannelServiceDataInstance = cb; }
 void RegisterChannelStateDataCallback(FuncCallBackChannelData cb) { callbackChannelStateDataInstance = cb; }
 void RegisterChannelAuditDataCallback(FuncCallBackChannelData cb) { callbackChannelAuditDataInstance = cb; }
