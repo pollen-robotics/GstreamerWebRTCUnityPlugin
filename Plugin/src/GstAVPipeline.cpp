@@ -563,17 +563,13 @@ void GstAVPipeline::DestroyPipeline()
     {
         gst_clear_sample(&_leftData->last_sample);
         gst_clear_caps(&_leftData->last_caps);
-        gst_clear_buffer(&_leftData->shared_buffer);
         gst_clear_object(&_leftData->conv);
-        _leftData->keyed_mutex = nullptr;
     }
     if (_rightData != nullptr)
     {
         gst_clear_sample(&_rightData->last_sample);
         gst_clear_caps(&_rightData->last_caps);
-        gst_clear_buffer(&_rightData->shared_buffer);
         gst_clear_object(&_rightData->conv);
-        _rightData->keyed_mutex = nullptr;
     }
 
     //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
