@@ -21,9 +21,12 @@ extern "C"
     static FuncCallBackSDP callbackSDPInstance = nullptr;
     DLLExport void RegisterSDPCallback(FuncCallBackSDP cb);
 
-    typedef void (*FuncCallBackChannelServiceOpen)();
-    static FuncCallBackChannelServiceOpen callbackChannelServiceOpenInstance = nullptr;
-    DLLExport void RegisterChannelServiceOpenCallback(FuncCallBackChannelServiceOpen cb);
+    typedef void (*FuncCallBackChannelOpen)();
+    static FuncCallBackChannelOpen callbackChannelServiceOpenInstance = nullptr;
+    DLLExport void RegisterChannelServiceOpenCallback(FuncCallBackChannelOpen cb);
+
+    static FuncCallBackChannelOpen callbackChannelCommandOpenInstance = nullptr;
+    DLLExport void RegisterChannelCommandOpenCallback(FuncCallBackChannelOpen cb);
 
     typedef void (*FuncCallBackChannelData)(const uint8_t * message, int size);
     static FuncCallBackChannelData callbackChannelServiceDataInstance = nullptr;
