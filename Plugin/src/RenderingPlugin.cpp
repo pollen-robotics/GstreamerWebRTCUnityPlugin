@@ -37,11 +37,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
 {
 #if UNIY_WIN
     gstAVPipeline->CreateDevice();
-#elif UNITY_ANDROID
-    // GstAVPipelineOpenGLES* avpipeline = static_cast<GstAVPipelineOpenGLES*>(gstAVPipeline.get());
-    // ms2_vm->AttachCurrentThread(&jni_env, 0);
-    //  avpipeline->CreateNativeWindow(jni_env);
-    // avpipeline->SetNativeWindow(jni_env, surface_plugin);
 #endif
 }
 
@@ -70,11 +65,6 @@ extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API CreateTexture(unsign
 #endif
     return nullptr;
 }
-
-/* extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API GetTexturePtr(bool left)
-{
-    return gstAVPipeline->GetTexturePtr(left);
-}*/
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* texPtr)
 {
@@ -115,11 +105,13 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelComma
     gstDataPipeline->send_byte_array_channel_command(data, size);
 }
 
+#if UNITY_ANDROID
 extern "C" JNIEXPORT void JNICALL Java_com_pollenrobotics_gstreamer_RenderingCallbackManager_nativeInit(JNIEnv* env,
                                                                                                         jobject obj)
 {
     gCallbackObject = env->NewGlobalRef(obj);
 }
+#endif
 
 // --------------------------------------------------------------------------
 // UnitySetInterfaces
@@ -138,7 +130,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     gstMicPipeline = std::make_unique<GstMicPipeline>();
 #elif UNITY_ANDROID
     // gst_init done in the java side
-    // gst_init(nullptr, nullptr);
     gstAVPipeline = std::make_unique<GstAVPipelineOpenGLES>(unityInterfaces);
 #endif
 

@@ -14,20 +14,16 @@ namespace GstreamerWebRTC
 {
     public class GStreamerRenderingPlugin
     {
-        /*
-        #if PLATFORM_SWITCH && !UNITY_EDITOR
-            [DllImport("__Internal")]
-            private static extern void RegisterPlugin();
-        #endif*/
-
         [DllImport("UnityGStreamerPlugin")]
         private static extern void CreatePipeline(string uri, string remote_peer_id);
 
         [DllImport("UnityGStreamerPlugin")]
         private static extern void CreateDevice();
 
+#if UNITY_ANDROID
         [DllImport("UnityGStreamerPlugin")]
         private static extern void SetSurface(IntPtr surface, bool left);
+#endif
 
         [DllImport("UnityGStreamerPlugin")]
         private static extern void DestroyPipeline();
@@ -67,11 +63,11 @@ namespace GstreamerWebRTC
 
         private bool _autoreconnect = false;
 
-
-        private class PluginTestCallback : AndroidJavaProxy
+#if UNITY_ANDROID
+        private class PluginCallback : AndroidJavaProxy
         {
             private Action<int> callback;
-            public PluginTestCallback(Action<int> callback) : base("com.pollenrobotics.gstreamer.GstreamerActivity$OnInitializedListener")
+            public PluginCallback(Action<int> callback) : base("com.pollenrobotics.gstreamer.GstreamerActivity$OnInitializedListener")
             {
                 this.callback = callback;
             }
@@ -80,6 +76,7 @@ namespace GstreamerWebRTC
                 this.callback(textureId);
             }
         }
+#endif
 
 
         public GStreamerRenderingPlugin(string ip_address, ref Texture leftTexture, ref Texture rightTexture)
@@ -97,43 +94,30 @@ namespace GstreamerWebRTC
             event_OnPipelineStopped = new UnityEvent();
             _command = new CommandBuffer();
 
-            /*AndroidJavaObject surfaceView = GetUnitySurfaceView();
-            if (surfaceView != null)
-            {
-                Debug.Log("SurfaceView obtenue avec succès!");
-                // Vous pouvez maintenant utiliser surfaceView comme vous le souhaitez
-            }
-            else
-            {
-                Debug.LogError("Impossible d'obtenir la SurfaceView.");
-            }
-            SetSurface(surfaceView.GetRawObject());*/
-
+#if UNITY_ANDROID
             _command.IssuePluginEvent(GetRenderEventFunc(), 1);
             Camera.main.AddCommandBuffer(CameraEvent.BeforeSkybox, _command);
-            //Graphics.ExecuteCommandBuffer(_command);
 
             new AndroidJavaClass("com.pollenrobotics.gstreamer.GstreamerActivity")
                 .CallStatic(
                 "InitExternalTexture",
                 (int)width,
                 (int)height,
-                new PluginTestCallback(texId =>
+                new PluginCallback(texId =>
                 {
                     leftTextureNativePtr = (IntPtr)texId;
                 }),
-                new PluginTestCallback(texId =>
+                new PluginCallback(texId =>
                 {
                     rightTextureNativePtr = (IntPtr)texId;
                     nativeTexPtrSet = true;
                 })
             );
-            //StartCoroutine(WaitForNativePointer(ref leftTexture));
-
+#elif (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN)
             CreateDevice();
-            //leftTexture = CreateRenderTexture(true, ref leftTextureNativePtr);
-            //rightTexture = CreateRenderTexture(false, ref rightTextureNativePtr);
-            //StartCoroutine(WaitOneFrame(ref leftTexture, ref rightTexture));
+            leftTexture = CreateRenderTexture(true, ref leftTextureNativePtr);
+            rightTexture = CreateRenderTexture(false, ref rightTextureNativePtr);
+#endif
         }
 
         public bool IsNativePtrSet()
@@ -166,7 +150,9 @@ namespace GstreamerWebRTC
 
         Texture CreateRenderTexture(bool left, ref IntPtr textureNativePtr)
         {
-            //textureNativePtr = CreateTexture(width, height, left);
+#if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN)
+            textureNativePtr = CreateTexture(width, height, left);
+#endif
 
             if (textureNativePtr != IntPtr.Zero)
             {
@@ -222,12 +208,14 @@ namespace GstreamerWebRTC
 
         public void Render()
         {
-             /*if (_started)
+#if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN)
+             if (_started)
              {
                  _command.Clear();
                  _command.IssuePluginEvent(GetRenderEventFunc(), 1);
                  Graphics.ExecuteCommandBuffer(_command);
-             }  */
+             }  
+#endif
         }
 
     }
