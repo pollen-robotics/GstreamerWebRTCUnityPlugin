@@ -7,7 +7,7 @@
       "dependencies": {}
     },
     "com.unity.collab-proxy": {
-      "version": "2.4.4",
+      "version": "2.5.2",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
@@ -66,6 +66,13 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.mobile.android-logcat": {
+      "version": "1.4.3",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
     "com.unity.performance.profile-analyzer": {
       "version": "1.2.2",
       "depth": 1,
@@ -102,7 +109,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.textmeshpro": {
-      "version": "3.0.6",
+      "version": "3.0.7",
       "depth": 0,
       "source": "registry",
       "dependencies": {

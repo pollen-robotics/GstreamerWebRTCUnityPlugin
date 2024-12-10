@@ -14,101 +14,49 @@ namespace GstreamerWebRTC
     {
 
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         private static extern void CreateDataPipeline();
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         private static extern void DestroyDataPipeline();
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         private static extern void SetSDPOffer(string sdp_offer);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         private static extern void SetICECandidate(string candidate, int mline_index);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         public static extern void SendBytesChannelService(byte[] array, int size);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         public static extern void SendBytesChannelCommand(byte[] array, int size);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         static extern void RegisterICECallback(iceCallback cb);
         delegate void iceCallback(IntPtr candidate, int size_candidate, int mline_index);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         static extern void RegisterSDPCallback(sdpCallback cb);
         delegate void sdpCallback(IntPtr request, int size);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         static extern void RegisterChannelServiceOpenCallback(channelServiceOpenCallback cb);
         delegate void channelServiceOpenCallback();
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         static extern void RegisterChannelCommandOpenCallback(channelCommandOpenCallback cb);
         delegate void channelCommandOpenCallback();
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         static extern void RegisterChannelServiceDataCallback(channelServiceDataCallback cb);
         delegate void channelServiceDataCallback(IntPtr data, int size_data);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         static extern void RegisterChannelStateDataCallback(channelStateDataCallback cb);
         delegate void channelStateDataCallback(IntPtr data, int size_data);
 
-#if (PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_BRATWURST || PLATFORM_SWITCH) && !UNITY_EDITOR
-    [DllImport("__Internal")]
-#else
         [DllImport("UnityGStreamerPlugin")]
-#endif
         static extern void RegisterChannelAuditDataCallback(channelAuditDataCallback cb);
         delegate void channelAuditDataCallback(IntPtr data, int size_data);
 

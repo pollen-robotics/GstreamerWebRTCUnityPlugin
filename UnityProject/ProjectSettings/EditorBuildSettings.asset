@@ -4,5 +4,12 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
-  m_configObjects: {}
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/gstreamer_scene.unity
+    guid: 055c9d0aeb715f44caf2ab60882077c1
+  m_configObjects:
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: cf365a1d0a9327e54be4665aa1607c68, type: 2}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 04d9fe3cbe6f6e1dbaad9f68294c5ac9, type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 93b7140d3cd9410bc9f8857cc0cec3c9, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 36988d940388eaa568e707b0dbec118b, type: 2}

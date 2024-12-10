@@ -3,8 +3,8 @@
  LICENSE file in the root directory of this source tree. */
 
 #pragma once
-#include "Unity/IUnityInterface.h"
 #include "GstBasePipeline.h"
+#include "Unity/IUnityInterface.h"
 #include <d3d11.h>
 #include <gst/app/app.h>
 #include <gst/d3d11/gstd3d11.h>
@@ -52,7 +52,7 @@ public:
 private:
     static void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data);
     static void webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata);
-    
+
     static GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
     GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data) override;

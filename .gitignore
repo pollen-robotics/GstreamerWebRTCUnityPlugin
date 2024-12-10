@@ -82,3 +82,8 @@ UnityProject/[Aa]ssets/[Ss]treamingAssets/aa/*
 
 Plugin/[Bb]uild/
 Plugin/[Bb]uilds/
+
+Plugin/android/libs/
+Plugin/android/obj/
+Plugin/android/src/
+Plugin/android/gst-android-build/
