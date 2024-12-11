@@ -2,8 +2,8 @@
  This source code is licensed under the license found in the
  LICENSE file in the root directory of this source tree. */
 
-#include "GstAVPipeline.h"
 #include "DebugLog.h"
+#include "GstAVPipeline.h"
 
 #include <d3d11_1.h>
 #include <d3d11sdklayers.h>
@@ -27,7 +27,7 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
 
     std::unique_ptr<AppData> data = std::make_unique<AppData>();
     data->avpipeline = this;
-    
+
     // Create a texture 2D that can be shared
     D3D11_TEXTURE2D_DESC desc = {};
     desc.Width = width;
@@ -70,7 +70,7 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
         hr = device1->QueryInterface(IID_PPV_ARGS(&pDebug));
         g_assert(SUCCEEDED(hr));
     }*/
-    
+
     /* Open shared texture at GStreamer device side */
     ComPtr<ID3D11Texture2D> gst_texture;
     hr = device1->OpenSharedResource1(shared_handle, IID_PPV_ARGS(&gst_texture));
@@ -83,7 +83,7 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
     GstMemory* mem = gst_d3d11_allocator_alloc_wrapped(nullptr, _device, gst_texture.Get(),
                                                        /* CPU accessible (staging texture) memory size is unknown.
                                                         * Pass zero here, then GStreamer will calculate it */
-                                                  0, nullptr, nullptr);
+                                                       0, nullptr, nullptr);
     g_assert(mem);
 
     data->shared_buffer = gst_buffer_new();
@@ -92,7 +92,7 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
     if (left)
         _leftData = std::move(data);
     else
-        _rightData = std::move(data);    
+        _rightData = std::move(data);
     return texture.Get();
 }
 
@@ -255,19 +255,6 @@ GstElement* GstAVPipeline::add_rtpopusdepay(GstElement* pipeline)
 
     gst_bin_add(GST_BIN(pipeline), rtpopusdepay);
     return rtpopusdepay;
-}
-
-GstElement* GstAVPipeline::add_queue(GstElement* pipeline)
-{
-    GstElement* queue = gst_element_factory_make("queue", nullptr);
-    if (!queue)
-    {
-        Debug::Log("Failed to create queue", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), queue);
-    return queue;
 }
 
 GstElement* GstAVPipeline::add_opusdec(GstElement* pipeline)
@@ -441,15 +428,16 @@ void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstEle
 void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
 {
     if (texture != nullptr)
-    {  
+    {
         texture->Release();
-        texture = nullptr;        
+        texture = nullptr;
     }
 }
 
-GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces) : GstBasePipeline("AVPipeline"), _s_UnityInterfaces(s_UnityInterfaces)
+GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces)
+    : GstBasePipeline("AVPipeline"), _s_UnityInterfaces(s_UnityInterfaces)
 {
-    //preload plugins before Unity XR plugin
+    // preload plugins before Unity XR plugin
     preloaded_plugins.push_back(gst_plugin_load_by_name("rswebrtc"));
     if (!preloaded_plugins.back())
     {
@@ -545,8 +533,8 @@ void GstAVPipeline::CreateDevice()
         auto luid = gst_d3d11_luid_to_int64(&adapter_desc.AdapterLuid);
 
         /* This device will be used by our pipeline */
-        _device = gst_d3d11_device_new_for_adapter_luid(
-            luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT /* | D3D11_CREATE_DEVICE_DEBUG*/);
+        _device =
+            gst_d3d11_device_new_for_adapter_luid(luid, D3D11_CREATE_DEVICE_BGRA_SUPPORT /* | D3D11_CREATE_DEVICE_DEBUG*/);
         g_assert(_device);
     }
     else
@@ -558,7 +546,7 @@ void GstAVPipeline::CreateDevice()
 void GstAVPipeline::DestroyPipeline()
 {
     GstBasePipeline::DestroyPipeline();
-    
+
     if (_leftData != nullptr)
     {
         gst_clear_sample(&_leftData->last_sample);
@@ -572,8 +560,8 @@ void GstAVPipeline::DestroyPipeline()
         gst_clear_object(&_rightData->conv);
     }
 
-    //pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
-    //pDebug = nullptr;
+    // pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+    // pDebug = nullptr;
 }
 
 GstBusSyncReply GstAVPipeline::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data)

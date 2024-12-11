@@ -78,7 +78,6 @@ namespace GstreamerWebRTC
         }
 #endif
 
-
         public GStreamerRenderingPlugin(string ip_address, ref Texture leftTexture, ref Texture rightTexture)
         {
             _started = false;
@@ -129,13 +128,9 @@ namespace GstreamerWebRTC
         {
             AndroidJavaObject surface = new AndroidJavaClass("com.pollenrobotics.gstreamer.GstreamerActivity")
                 .CallStatic<AndroidJavaObject>("GetSurface", left);
-            if(surface == null)
-            {
-                Debug.LogError("Surface is null");
-            }
-            Debug.Log("houhou");
+
             SetSurface(surface.GetRawObject(), left);
-            Debug.Log("haha");
+
             if (left)
                 return CreateRenderTexture(left, ref leftTextureNativePtr);
             else
@@ -192,6 +187,12 @@ namespace GstreamerWebRTC
             _signalling.RequestStop();
 
             StopPipeline();
+
+#if UNITY_ANDROID
+            new AndroidJavaClass("com.pollenrobotics.gstreamer.GstreamerActivity")
+                .CallStatic<AndroidJavaObject>("CleanSurfaces");
+#endif
+
             if (leftTextureNativePtr != IntPtr.Zero)
             {
                 ReleaseTexture(leftTextureNativePtr);

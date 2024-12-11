@@ -57,4 +57,18 @@ public class GstreamerActivity extends UnityPlayerActivity {
         return renderTextureRight.GetSurface();
   }
 
+  public static void CleanSurfaces()
+  {
+        if(renderTextureLeft != null)
+        {
+            renderTextureLeft.release();
+            renderTextureLeft = null;
+        }
+        if(renderTextureRight != null)
+        {
+            renderTextureRight.release();
+            renderTextureRight = null;
+        }
+  }
+
 }
