@@ -21,10 +21,5 @@ private:
     std::mutex _lock;
 
 private:
-    static GstElement* add_autoaudiosink(GstElement* pipeline);
-    static GstElement* add_videoconvert(GstElement* pipeline);
-    static GstElement* add_audioconvert(GstElement* pipeline);
-    static GstElement* add_glimagesink(GstElement* pipeline);
-    static GstElement* add_appsink(GstElement* pipeline);
     void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) override;
 };

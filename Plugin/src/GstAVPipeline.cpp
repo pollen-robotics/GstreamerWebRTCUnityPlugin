@@ -5,32 +5,6 @@
 #include "GstAVPipeline.h"
 #include "DebugLog.h"
 
-GstElement* GstAVPipeline::add_queue(GstElement* pipeline)
-{
-    GstElement* queue = gst_element_factory_make("queue", nullptr);
-    if (!queue)
-    {
-        Debug::Log("Failed to create queue", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), queue);
-    return queue;
-}
-
-GstElement* GstAVPipeline::add_audioresample(GstElement* pipeline)
-{
-    GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
-    if (!audioresample)
-    {
-        Debug::Log("Failed to create audioresample", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), audioresample);
-    return audioresample;
-}
-
 GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
                                          GstAVPipeline* self)
 {

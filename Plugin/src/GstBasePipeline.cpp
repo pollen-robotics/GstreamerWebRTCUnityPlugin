@@ -11,16 +11,16 @@ GstBasePipeline::GstBasePipeline(const std::string& pipename) : PIPENAME(pipenam
     main_loop_ = g_main_loop_new(main_context_, FALSE);
 }
 
-GstBasePipeline::~GstBasePipeline() {
+GstBasePipeline::~GstBasePipeline()
+{
     g_main_context_unref(main_context_);
     g_main_loop_unref(main_loop_);
 }
 
-void GstBasePipeline::CreatePipeline() { 
-    pipeline_ = gst_pipeline_new(PIPENAME.c_str()); 
-}
+void GstBasePipeline::CreatePipeline() { pipeline_ = gst_pipeline_new(PIPENAME.c_str()); }
 
-void GstBasePipeline::DestroyPipeline() {
+void GstBasePipeline::DestroyPipeline()
+{
     if (main_loop_ != nullptr)
         g_main_loop_quit(main_loop_);
 
@@ -47,7 +47,7 @@ void GstBasePipeline::DestroyPipeline() {
 gpointer GstBasePipeline::main_loop_func(gpointer data)
 {
     GstBasePipeline* self = static_cast<GstBasePipeline*>(data);
-    Debug::Log("Entering main loop "+ self->PIPENAME);
+    Debug::Log("Entering main loop " + self->PIPENAME);
 
     g_main_context_push_thread_default(self->main_context_);
 
@@ -72,7 +72,7 @@ gpointer GstBasePipeline::main_loop_func(gpointer data)
     gst_bus_remove_watch(bus);
     gst_object_unref(bus);
     g_main_context_pop_thread_default(self->main_context_);
-    Debug::Log("Quitting main loop "+ self->PIPENAME);
+    Debug::Log("Quitting main loop " + self->PIPENAME);
 
     return nullptr;
 }
@@ -83,10 +83,7 @@ GstBusSyncReply GstBasePipeline::busSyncHandlerWrapper(GstBus* bus, GstMessage* 
     return self->busSyncHandler(bus, msg, user_data);
 }
 
-GstBusSyncReply GstBasePipeline::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data) 
-{
-    return GST_BUS_PASS; 
-}
+GstBusSyncReply GstBasePipeline::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data) { return GST_BUS_PASS; }
 
 gboolean GstBasePipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data)
 {
@@ -111,12 +108,12 @@ gboolean GstBasePipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data
             break;
         }
         case GST_MESSAGE_EOS:
-            Debug::Log("Got EOS "+ self->PIPENAME);
+            Debug::Log("Got EOS " + self->PIPENAME);
             g_main_loop_quit(self->main_loop_);
             break;
         case GST_MESSAGE_LATENCY:
         {
-            //Debug::Log("Redistribute latency ...");
+            // Debug::Log("Redistribute latency ...");
             gst_bin_recalculate_latency(GST_BIN(self->pipeline_));
             GstBasePipeline::dumpLatencyCallback(self);
             break;
@@ -129,7 +126,7 @@ gboolean GstBasePipeline::busHandler(GstBus* bus, GstMessage* msg, gpointer data
     return G_SOURCE_CONTINUE;
 }
 
-gboolean GstBasePipeline::dumpLatencyCallback(GstBasePipeline* self) 
+gboolean GstBasePipeline::dumpLatencyCallback(GstBasePipeline* self)
 {
     if (self)
     {
@@ -140,8 +137,8 @@ gboolean GstBasePipeline::dumpLatencyCallback(GstBasePipeline* self)
             gboolean live;
             GstClockTime min_latency, max_latency;
             gst_query_parse_latency(query, &live, &min_latency, &max_latency);
-            std::string msg = "Pipeline "+ self->PIPENAME + " latency: live=" + std::to_string(live) + ", min=" + std::to_string(min_latency) +
-                              ", max=" + std::to_string(max_latency);
+            std::string msg = "Pipeline " + self->PIPENAME + " latency: live=" + std::to_string(live) +
+                              ", min=" + std::to_string(min_latency) + ", max=" + std::to_string(max_latency);
             Debug::Log(msg);
         }
         gst_query_unref(query);
@@ -158,4 +155,17 @@ void GstBasePipeline::CreateBusThread()
     {
         Debug::Log("Failed to create GLib main thread", Level::Error);
     }
+}
+
+// generic method to add element with default options
+GstElement* GstBasePipeline::add_by_name(GstElement* pipeline, const std::string& name)
+{
+    GstElement* element = gst_element_factory_make(name.c_str(), nullptr);
+    if (!element)
+    {
+        Debug::Log("Failed to create " + name, Level::Error);
+        return nullptr;
+    }
+    gst_bin_add(GST_BIN(pipeline), element);
+    return element;
 }

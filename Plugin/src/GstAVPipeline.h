@@ -25,8 +25,6 @@ protected:
     static void on_pad_added_wrapper(GstElement* src, GstPad* new_pad, gpointer data);
     static void webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata);
 
-    static GstElement* add_queue(GstElement* pipeline);
-    static GstElement* add_audioresample(GstElement* pipeline);
     static GstElement* add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
                                      GstAVPipeline* self);
 };

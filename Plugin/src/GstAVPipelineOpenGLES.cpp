@@ -79,54 +79,6 @@ void GstAVPipelineOpenGLES::ReleaseTexture(void* texture)
     _nativeWindow_right = nullptr;
 }
 
-GstElement* GstAVPipelineOpenGLES::add_autoaudiosink(GstElement* pipeline)
-{
-    GstElement* autoaudiosink = gst_element_factory_make("autoaudiosink", nullptr);
-    if (!autoaudiosink)
-    {
-        Debug::Log("Failed to create audiosink", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), autoaudiosink);
-    return autoaudiosink;
-}
-
-GstElement* GstAVPipelineOpenGLES::add_videoconvert(GstElement* pipeline)
-{
-    GstElement* videoconvert = gst_element_factory_make("videoconvert", nullptr);
-    if (!videoconvert)
-    {
-        Debug::Log("Failed to create videoconvert", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), videoconvert);
-    return videoconvert;
-}
-
-GstElement* GstAVPipelineOpenGLES::add_audioconvert(GstElement* pipeline)
-{
-    GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
-    if (!audioconvert)
-    {
-        Debug::Log("Failed to create audioconvert", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), audioconvert);
-    return audioconvert;
-}
-
-GstElement* GstAVPipelineOpenGLES::add_glimagesink(GstElement* pipeline)
-{
-    GstElement* glimagesink = gst_element_factory_make("glimagesink", nullptr);
-    if (!glimagesink)
-    {
-        Debug::Log("Failed to create glimagesink", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), glimagesink);
-    return glimagesink;
-}
-
 void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data)
 {
     gchar* pad_name = gst_pad_get_name(new_pad);
@@ -137,9 +89,9 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
     {
         std::lock_guard<std::mutex> lk(avpipeline->_lock);
         Debug::Log("Adding video pad " + std::string(pad_name));
-        GstElement* queue = add_queue(avpipeline->pipeline_);
-        GstElement* videoconvert = add_videoconvert(avpipeline->pipeline_);
-        GstElement* glimagesink = add_glimagesink(avpipeline->pipeline_);
+        GstElement* queue = add_by_name(avpipeline->pipeline_, "queue");
+        GstElement* videoconvert = add_by_name(avpipeline->pipeline_, "videoconvert");
+        GstElement* glimagesink = add_by_name(avpipeline->pipeline_, "glimagesink");
 
         if (g_str_has_prefix(pad_name, "video_0"))
         {
@@ -171,12 +123,14 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
     else if (g_str_has_prefix(pad_name, "audio"))
     {
         Debug::Log("Adding audio pad " + std::string(pad_name));
-        GstElement* queue = add_queue(avpipeline->pipeline_);
-        GstElement* audioconvert = add_audioconvert(avpipeline->pipeline_);
-        GstElement* audioresample = add_audioresample(avpipeline->pipeline_);
-        GstElement* autoaudiosink = add_autoaudiosink(avpipeline->pipeline_);
+        GstElement* rtpopusdepay = add_by_name(avpipeline->pipeline_, "rtpopusdepay");
+        GstElement* queue = add_by_name(avpipeline->pipeline_, "queue");
+        GstElement* opusdec = add_by_name(avpipeline->pipeline_, "opusdec");
+        GstElement* audioconvert = add_by_name(avpipeline->pipeline_, "audioconvert");
+        GstElement* audioresample = add_by_name(avpipeline->pipeline_, "audioresample");
+        GstElement* autoaudiosink = add_by_name(avpipeline->pipeline_, "autoaudiosink");
 
-        if (!gst_element_link_many(queue, audioconvert, audioresample, autoaudiosink, nullptr))
+        if (!gst_element_link_many(queue, rtpopusdepay, opusdec, audioconvert, audioresample, autoaudiosink, nullptr))
         {
             Debug::Log("Audio elements could not be linked.", Level::Error);
         }
@@ -188,6 +142,8 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
         }
         gst_object_unref(sinkpad);
 
+        gst_element_sync_state_with_parent(rtpopusdepay);
+        gst_element_sync_state_with_parent(opusdec);
         gst_element_sync_state_with_parent(queue);
         gst_element_sync_state_with_parent(audioconvert);
         gst_element_sync_state_with_parent(audioresample);

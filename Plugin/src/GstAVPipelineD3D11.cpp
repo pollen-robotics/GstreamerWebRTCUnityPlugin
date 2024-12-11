@@ -179,54 +179,6 @@ void GstAVPipelineD3D11::Draw(bool left)
     gst_sample_unref(sample);
 }
 
-GstElement* GstAVPipelineD3D11::add_rtph264depay(GstElement* pipeline)
-{
-    GstElement* rtph264depay = gst_element_factory_make("rtph264depay", nullptr);
-    if (!rtph264depay)
-    {
-        Debug::Log("Failed to create rtph264depay", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), rtph264depay);
-    return rtph264depay;
-}
-
-GstElement* GstAVPipelineD3D11::add_h264parse(GstElement* pipeline)
-{
-    GstElement* h264parse = gst_element_factory_make("h264parse", nullptr);
-    if (!h264parse)
-    {
-        Debug::Log("Failed to create h264parse", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), h264parse);
-    return h264parse;
-}
-
-GstElement* GstAVPipelineD3D11::add_d3d11h264dec(GstElement* pipeline)
-{
-    GstElement* d3d11h264dec = gst_element_factory_make("d3d11h264dec", nullptr);
-    if (!d3d11h264dec)
-    {
-        Debug::Log("Failed to create d3d11h264dec", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), d3d11h264dec);
-    return d3d11h264dec;
-}
-
-GstElement* GstAVPipelineD3D11::add_d3d11convert(GstElement* pipeline)
-{
-    GstElement* d3d11convert = gst_element_factory_make("d3d11convert", nullptr);
-    if (!d3d11convert)
-    {
-        Debug::Log("Failed to create d3d11convert", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), d3d11convert);
-    return d3d11convert;
-}
-
 GstElement* GstAVPipelineD3D11::add_appsink(GstElement* pipeline)
 {
     GstElement* appsink = gst_element_factory_make("appsink", nullptr);
@@ -242,58 +194,6 @@ GstElement* GstAVPipelineD3D11::add_appsink(GstElement* pipeline)
 
     gst_bin_add(GST_BIN(pipeline), appsink);
     return appsink;
-}
-
-GstElement* GstAVPipelineD3D11::add_rtpopusdepay(GstElement* pipeline)
-{
-    GstElement* rtpopusdepay = gst_element_factory_make("rtpopusdepay", nullptr);
-    if (!rtpopusdepay)
-    {
-        Debug::Log("Failed to create rtpopusdepay", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), rtpopusdepay);
-    return rtpopusdepay;
-}
-
-GstElement* GstAVPipelineD3D11::add_opusdec(GstElement* pipeline)
-{
-    GstElement* opusdec = gst_element_factory_make("opusdec", nullptr);
-    if (!opusdec)
-    {
-        Debug::Log("Failed to create opusdec", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), opusdec);
-    return opusdec;
-}
-
-GstElement* GstAVPipelineD3D11::add_audioconvert(GstElement* pipeline)
-{
-    GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
-    if (!audioconvert)
-    {
-        Debug::Log("Failed to create audioconvert", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), audioconvert);
-    return audioconvert;
-}
-
-GstElement* GstAVPipelineD3D11::add_audioresample(GstElement* pipeline)
-{
-    GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
-    if (!audioresample)
-    {
-        Debug::Log("Failed to create audioresample", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), audioresample);
-    return audioresample;
 }
 
 GstElement* GstAVPipelineD3D11::add_wasapi2sink(GstElement* pipeline)
@@ -319,10 +219,10 @@ void GstAVPipelineD3D11::on_pad_added(GstElement* src, GstPad* new_pad, gpointer
     if (g_str_has_prefix(pad_name, "video"))
     {
         Debug::Log("Adding video pad " + std::string(pad_name));
-        GstElement* rtph264depay = add_rtph264depay(avpipeline->pipeline_);
-        GstElement* h264parse = add_h264parse(avpipeline->pipeline_);
-        GstElement* d3d11h264dec = add_d3d11h264dec(avpipeline->pipeline_);
-        GstElement* d3d11convert = add_d3d11convert(avpipeline->pipeline_);
+        GstElement* rtph264depay = add_by_name(avpipeline->pipeline_, "rtph264depay");
+        GstElement* h264parse = add_by_name(avpipeline->pipeline_, "h264parse");
+        GstElement* d3d11h264dec = add_by_name(avpipeline->pipeline_, "d3d11h264dec");
+        GstElement* d3d11convert = add_by_name(avpipeline->pipeline_, "d3d11convert");
         GstElement* appsink = add_appsink(avpipeline->pipeline_);
 
         GstAppSinkCallbacks callbacks = {nullptr};
@@ -359,11 +259,11 @@ void GstAVPipelineD3D11::on_pad_added(GstElement* src, GstPad* new_pad, gpointer
     else if (g_str_has_prefix(pad_name, "audio"))
     {
         Debug::Log("Adding audio pad " + std::string(pad_name));
-        GstElement* rtpopusdepay = add_rtpopusdepay(avpipeline->pipeline_);
-        GstElement* queue = add_queue(avpipeline->pipeline_);
-        GstElement* opusdec = add_opusdec(avpipeline->pipeline_);
-        GstElement* audioconvert = add_audioconvert(avpipeline->pipeline_);
-        GstElement* audioresample = add_audioresample(avpipeline->pipeline_);
+        GstElement* rtpopusdepay = add_by_name(avpipeline->pipeline_, "rtpopusdepay");
+        GstElement* queue = add_by_name(avpipeline->pipeline_, "queue");
+        GstElement* opusdec = add_by_name(avpipeline->pipeline_, "opusdec");
+        GstElement* audioconvert = add_by_name(avpipeline->pipeline_, "audioconvert");
+        GstElement* audioresample = add_by_name(avpipeline->pipeline_, "audioresample");
         GstElement* wasapi2sink = add_wasapi2sink(avpipeline->pipeline_);
 
         if (!gst_element_link_many(rtpopusdepay, opusdec, queue, audioconvert, audioresample, wasapi2sink, nullptr))
@@ -397,8 +297,7 @@ void GstAVPipelineD3D11::ReleaseTexture(void* texture)
     }
 }
 
-GstAVPipelineD3D11::GstAVPipelineD3D11(IUnityInterfaces* s_UnityInterfaces)
-    : GstAVPipeline(s_UnityInterfaces)
+GstAVPipelineD3D11::GstAVPipelineD3D11(IUnityInterfaces* s_UnityInterfaces) : GstAVPipeline(s_UnityInterfaces)
 {
     // preload plugins before Unity XR plugin
     preloaded_plugins.push_back(gst_plugin_load_by_name("rswebrtc"));

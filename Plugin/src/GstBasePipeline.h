@@ -19,7 +19,7 @@ public:
     GstBasePipeline(const std::string& pipename);
     virtual ~GstBasePipeline();
     virtual void CreatePipeline();
-    virtual void DestroyPipeline();    
+    virtual void DestroyPipeline();
 
 protected:
     static gpointer main_loop_func(gpointer data);
@@ -27,6 +27,7 @@ protected:
     virtual GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
     static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
     static gboolean dumpLatencyCallback(GstBasePipeline* self);
+    static GstElement* add_by_name(GstElement* pipeline, const std::string& name);
 
     void CreateBusThread();
 };
