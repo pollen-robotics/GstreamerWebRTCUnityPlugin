@@ -73,12 +73,12 @@ void GstAVPipelineOpenGLES::SetNativeWindow(JNIEnv* env, jobject surface, bool l
     }
 }
 
-void GstAVPipelineOpenGLES::set_custom_opusenc_settings(GstElement* opusenc)
+/*void GstAVPipelineOpenGLES::set_custom_opusenc_settings(GstElement* opusenc)
 {
     g_object_set(opusenc, "frame-size", 10, nullptr);
-}
+}*/
 
-GstElement* GstAVPipelineOpenGLES::make_audiosink()
+/*GstElement* GstAVPipelineOpenGLES::make_audiosink()
 {
     GstElement* audiosink = gst_element_factory_make("autoaudiosink", nullptr);
     if (!audiosink)
@@ -100,7 +100,7 @@ GstElement* GstAVPipelineOpenGLES::make_audiosrc()
     }
 
     return audiosrc;
-}
+}*/
 
 GstElement* GstAVPipelineOpenGLES::add_videoconvert(GstElement* pipeline)
 {
@@ -112,19 +112,6 @@ GstElement* GstAVPipelineOpenGLES::add_videoconvert(GstElement* pipeline)
     }
     gst_bin_add(GST_BIN(pipeline), videoconvert);
     return videoconvert;
-}
-
-GstElement* GstAVPipelineOpenGLES::add_queue(GstElement* pipeline)
-{
-    GstElement* queue = gst_element_factory_make("queue", nullptr);
-    if (!queue)
-    {
-        Debug::Log("Failed to create queue", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), queue);
-    return queue;
 }
 
 GstElement* GstAVPipelineOpenGLES::add_glimagesink(GstElement* pipeline)
@@ -180,112 +167,11 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
     g_free(pad_name);
 }
 
-GstElement* GstAVPipelineOpenGLES::add_rtph264depay(GstElement* pipeline)
-{
-    GstElement* rtph264depay = gst_element_factory_make("rtph264depay", nullptr);
-    if (!rtph264depay)
-    {
-        Debug::Log("Failed to create rtph264depay", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), rtph264depay);
-    return rtph264depay;
-}
-
-GstElement* GstAVPipelineOpenGLES::add_h264parse(GstElement* pipeline)
-{
-    GstElement* h264parse = gst_element_factory_make("h264parse", nullptr);
-    if (!h264parse)
-    {
-        Debug::Log("Failed to create h264parse", Level::Error);
-        return nullptr;
-    }
-    gst_bin_add(GST_BIN(pipeline), h264parse);
-    return h264parse;
-}
-
-/*void GstAVPipelineOpenGLES::ReleaseTexture(ID3D11Texture2D* texture)
-{
-    if (texture != nullptr)
-    {
-        texture->Release();
-        texture = nullptr;
-    }
-}*/
-
-GstAVPipelineOpenGLES::GstAVPipelineOpenGLES(IUnityInterfaces* s_UnityInterfaces)
-    : GstBasePipeline("AVPipelineOpenGLES"), _s_UnityInterfaces(s_UnityInterfaces)
+GstAVPipelineOpenGLES::GstAVPipelineOpenGLES(IUnityInterfaces* s_UnityInterfaces) : GstAVPipeline(s_UnityInterfaces)
 {
     preloaded_plugins.push_back(gst_plugin_load_by_name("opengl"));
     if (!preloaded_plugins.back())
     {
         Debug::Log("Failed to load 'opengl' plugin", Level::Error);
     }
-}
-
-void GstAVPipelineOpenGLES::DestroyPipeline()
-{
-    eglDestroySurface(_display, _surface);
-    eglDestroyContext(_display, _context);
-    eglTerminate(_display);
-
-    GstBasePipeline::DestroyPipeline();
-}
-
-/*void* GstAVPipelineOpenGLES::GetTexturePtr(bool left)
-{
-    if (left)
-        return &_textureId_left;
-    else
-        return &_textureId_right;
-}*/
-
-void GstAVPipelineOpenGLES::CreatePipeline(const char* uri, const char* remote_peer_id)
-{
-    Debug::Log("GstBasePipeline create pipeline", Level::Info);
-    Debug::Log(uri, Level::Info);
-    Debug::Log(remote_peer_id, Level::Info);
-
-    GstBasePipeline::CreatePipeline();
-
-    GstElement* webrtcsrc = add_webrtcsrc(pipeline_, remote_peer_id, uri, this);
-
-    CreateBusThread();
-}
-
-GstElement* GstAVPipelineOpenGLES::add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id,
-                                                 const std::string& uri, GstAVPipelineOpenGLES* self)
-{
-    GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
-    if (!webrtcsrc)
-    {
-        Debug::Log("Failed to create webrtcsrc", Level::Error);
-        return nullptr;
-    }
-
-    GObject* signaller;
-    g_object_get(webrtcsrc, "signaller", &signaller, nullptr);
-    if (signaller)
-    {
-        g_object_set(signaller, "producer-peer-id", remote_peer_id.c_str(), "uri", uri.c_str(), nullptr);
-        g_signal_connect(G_OBJECT(signaller), "webrtcbin-ready", G_CALLBACK(webrtcbin_ready), self);
-        g_object_unref(signaller); // Unref signaller when done
-    }
-    else
-    {
-        Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
-    }
-
-    g_object_set(webrtcsrc, "stun-server", nullptr, "do-retransmission", false, nullptr);
-
-    g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), self);
-
-    gst_bin_add(GST_BIN(pipeline), webrtcsrc);
-    return webrtcsrc;
-}
-
-void GstAVPipelineOpenGLES::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
-{
-    Debug::Log("Configure webrtcbin", Level::Info);
-    g_object_set(webrtcbin, "latency", 5, nullptr);
 }

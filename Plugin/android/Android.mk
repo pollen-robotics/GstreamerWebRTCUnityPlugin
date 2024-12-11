@@ -6,7 +6,7 @@ include $(CLEAR_VARS)
 #SYSROOT  :=  $(abspath $(LOCAL_PATH))
 
 LOCAL_MODULE    := UnityGStreamerPlugin
-LOCAL_SRC_FILES := ../src/DebugLog.cpp ../src/RenderingPlugin.cpp ../src/GstDataPipeline.cpp ../src/GstBasePipeline.cpp ../src/GstAVPipelineOpenGLES.cpp
+LOCAL_SRC_FILES := ../src/DebugLog.cpp ../src/RenderingPlugin.cpp ../src/GstDataPipeline.cpp ../src/GstBasePipeline.cpp ../src/GstAVPipeline.cpp ../src/GstAVPipelineOpenGLES.cpp
 
 LOCAL_SHARED_LIBRARIES := gstreamer_android
 LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv2

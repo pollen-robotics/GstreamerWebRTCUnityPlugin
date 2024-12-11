@@ -5,18 +5,20 @@
 #include "GstDataPipeline.h"
 #include "Unity/IUnityGraphics.h"
 #include "Unity/PlatformBase.h"
-#include <assert.h>
+// #include <assert.h>
 
 #if UNIY_WIN
 #include "GstAVPipeline.h"
 #include "GstMicPipeline.h"
 
-static std::unique_ptr<GstAVPipeline> gstAVPipeline = nullptr;
 static std::unique_ptr<GstMicPipeline> gstMicPipeline = nullptr;
+static std::unique_ptr<GstAVPipelineD3D11> gstAVPipeline = nullptr;
+
 #elif UNITY_ANDROID
 #include "GstAVPipelineOpenGLES.h"
+#include <jni.h>
 static std::unique_ptr<GstAVPipelineOpenGLES> gstAVPipeline = nullptr;
-// static JNIEnv* jni_env = nullptr;
+//  static JNIEnv* jni_env = nullptr;
 static JavaVM* ms2_vm = nullptr;
 static jobject gCallbackObject;
 
@@ -43,10 +45,10 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
 #if UNITY_ANDROID
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetSurface(jobject surface, bool left)
 {
-    GstAVPipelineOpenGLES* avpipeline = static_cast<GstAVPipelineOpenGLES*>(gstAVPipeline.get());
+    // GstAVPipelineOpenGLES* avpipeline = static_cast<GstAVPipelineOpenGLES*>(gstAVPipeline.get());
     JNIEnv* jni_env = nullptr;
     ms2_vm->AttachCurrentThread(&jni_env, 0);
-    avpipeline->SetNativeWindow(jni_env, surface, left);
+    gstAVPipeline->SetNativeWindow(jni_env, surface, left);
 }
 #endif
 
@@ -126,7 +128,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 
 #if UNIY_WIN
     gst_init(nullptr, nullptr);
-    gstAVPipeline = std::make_unique<GstAVPipeline>(unityInterfaces);
+    gstAVPipeline = std::make_unique<GstAVPipelineD3D11>(unityInterfaces);
     gstMicPipeline = std::make_unique<GstMicPipeline>();
 #elif UNITY_ANDROID
     // gst_init done in the java side
