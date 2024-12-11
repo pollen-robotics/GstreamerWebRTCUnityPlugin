@@ -5,10 +5,10 @@
 #include "GstDataPipeline.h"
 #include "Unity/IUnityGraphics.h"
 #include "Unity/PlatformBase.h"
-// #include <assert.h>
+//#include <assert.h>
 
-#if UNIY_WIN
-#include "GstAVPipeline.h"
+#if UNITY_WIN
+#include "GstAVPipelineD3D11.h"
 #include "GstMicPipeline.h"
 
 static std::unique_ptr<GstMicPipeline> gstMicPipeline = nullptr;
@@ -37,7 +37,7 @@ static std::unique_ptr<GstDataPipeline> gstDataPipeline = nullptr;
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
 {
-#if UNIY_WIN
+#if UNITY_WIN
     gstAVPipeline->CreateDevice();
 #endif
 }
@@ -55,14 +55,14 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetSurface(jobject su
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id)
 {
     gstAVPipeline->CreatePipeline(uri, remote_peer_id);
-#if UNIY_WIN
+#if UNITY_WIN
     gstMicPipeline->CreatePipeline(uri, remote_peer_id);
 #endif
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API CreateTexture(unsigned int width, unsigned int height, bool left)
 {
-#if UNIY_WIN
+#if UNITY_WIN
     return gstAVPipeline->CreateTexture(width, height, left);
 #endif
     return nullptr;
@@ -70,17 +70,13 @@ extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API CreateTexture(unsign
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* texPtr)
 {
-#if UNIY_WIN
-    gstAVPipeline->ReleaseTexture((ID3D11Texture2D*)texPtr);
-#elif UNITY_ANDROID
     gstAVPipeline->ReleaseTexture(texPtr);
-#endif
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline()
 {
     gstAVPipeline->DestroyPipeline();
-#if UNIY_WIN
+#if UNITY_WIN
     gstMicPipeline->DestroyPipeline();
 #endif
 }
@@ -124,11 +120,11 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 {
     // const char* internalStoragePath = getenv("EXTERNAL_STORAGE");
     // td::string logFilePath = std::string(internalStoragePath) + "/gstreamer.log";
-    setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer.log", 1);
+    /* setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer.log", 1);
     setenv("GST_DEBUG_NO_COLOR", "1", 1);
-    setenv("GST_DEBUG", "4", 1);
+    setenv("GST_DEBUG", "4", 1);*/
 
-#if UNIY_WIN
+#if UNITY_WIN
     gst_init(nullptr, nullptr);
     gstAVPipeline = std::make_unique<GstAVPipelineD3D11>(unityInterfaces);
     gstMicPipeline = std::make_unique<GstMicPipeline>();
@@ -153,7 +149,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
-#if UNIY_WIN
+#if UNITY_WIN
     if (eventID == 1)
     {
         gstAVPipeline->Draw(true);

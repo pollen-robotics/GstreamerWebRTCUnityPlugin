@@ -310,37 +310,6 @@ GstElement* GstAVPipelineD3D11::add_wasapi2sink(GstElement* pipeline)
     return wasapi2sink;
 }
 
-GstElement* GstAVPipelineD3D11::add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
-                                              GstAVPipelineD3D11* self)
-{
-    GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
-    if (!webrtcsrc)
-    {
-        Debug::Log("Failed to create webrtcsrc", Level::Error);
-        return nullptr;
-    }
-
-    GObject* signaller;
-    g_object_get(webrtcsrc, "signaller", &signaller, nullptr);
-    if (signaller)
-    {
-        g_object_set(signaller, "producer-peer-id", remote_peer_id.c_str(), "uri", uri.c_str(), nullptr);
-        g_signal_connect(G_OBJECT(signaller), "webrtcbin-ready", G_CALLBACK(webrtcbin_ready), self);
-        g_object_unref(signaller); // Unref signaller when done
-    }
-    else
-    {
-        Debug::Log("Failed to get signaller property from webrtcsrc.", Level::Error);
-    }
-
-    g_object_set(webrtcsrc, "stun-server", nullptr, "do-retransmission", false, nullptr);
-
-    g_signal_connect(G_OBJECT(webrtcsrc), "pad-added", G_CALLBACK(on_pad_added), self);
-
-    gst_bin_add(GST_BIN(pipeline), webrtcsrc);
-    return webrtcsrc;
-}
-
 void GstAVPipelineD3D11::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data)
 {
     GstAVPipelineD3D11* avpipeline = static_cast<GstAVPipelineD3D11*>(data);
@@ -419,23 +388,17 @@ void GstAVPipelineD3D11::on_pad_added(GstElement* src, GstPad* new_pad, gpointer
     g_free(pad_name);
 }
 
-void GstAVPipelineD3D11::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
-{
-    Debug::Log("Configure webrtcbin", Level::Info);
-    g_object_set(webrtcbin, "latency", 1, nullptr);
-}
-
-void GstAVPipelineD3D11::ReleaseTexture(ID3D11Texture2D* texture)
+void GstAVPipelineD3D11::ReleaseTexture(void* texture)
 {
     if (texture != nullptr)
     {
-        texture->Release();
+        ((ID3D11Texture2D*)(texture))->Release();
         texture = nullptr;
     }
 }
 
 GstAVPipelineD3D11::GstAVPipelineD3D11(IUnityInterfaces* s_UnityInterfaces)
-    : GstBasePipeline("AVPipeline"), _s_UnityInterfaces(s_UnityInterfaces)
+    : GstAVPipeline(s_UnityInterfaces)
 {
     // preload plugins before Unity XR plugin
     preloaded_plugins.push_back(gst_plugin_load_by_name("rswebrtc"));
@@ -485,31 +448,6 @@ GstAVPipelineD3D11::GstAVPipelineD3D11(IUnityInterfaces* s_UnityInterfaces)
     }
 
     _render_info = GstVideoInfo();
-}
-
-GstAVPipelineD3D11::~GstAVPipelineD3D11()
-{
-    gst_clear_object(&_device);
-    gst_object_unref(_device);
-
-    for (auto& plugin : preloaded_plugins)
-    {
-        gst_object_unref(plugin);
-    }
-    preloaded_plugins.clear();
-}
-
-void GstAVPipelineD3D11::CreatePipeline(const char* uri, const char* remote_peer_id)
-{
-    Debug::Log("GstAVPipelineD3D11 create pipeline", Level::Info);
-    Debug::Log(uri, Level::Info);
-    Debug::Log(remote_peer_id, Level::Info);
-
-    GstBasePipeline::CreatePipeline();
-
-    GstElement* webrtcsrc = add_webrtcsrc(pipeline_, remote_peer_id, uri, this);
-
-    CreateBusThread();
 }
 
 void GstAVPipelineD3D11::CreateDevice()

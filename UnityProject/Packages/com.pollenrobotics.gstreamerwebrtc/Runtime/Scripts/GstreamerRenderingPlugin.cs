@@ -43,7 +43,6 @@ namespace GstreamerWebRTC
         private IntPtr leftTextureNativePtr;
 
         private IntPtr rightTextureNativePtr;
-        private bool nativeTexPtrSet = false;
 
         private string _signallingServerURL;
         private BaseSignalling _signalling;
@@ -64,6 +63,9 @@ namespace GstreamerWebRTC
         private bool _autoreconnect = false;
 
 #if UNITY_ANDROID
+
+        private bool nativeTexPtrSet = false;
+
         private class PluginCallback : AndroidJavaProxy
         {
             private Action<int> callback;
@@ -119,6 +121,7 @@ namespace GstreamerWebRTC
 #endif
         }
 
+#if UNITY_ANDROID
         public bool IsNativePtrSet()
         {
             return nativeTexPtrSet;
@@ -136,7 +139,7 @@ namespace GstreamerWebRTC
             else
                 return CreateRenderTexture(left, ref rightTextureNativePtr);
         }
-
+#endif
 
         public void Connect()
         {
@@ -210,12 +213,12 @@ namespace GstreamerWebRTC
         public void Render()
         {
 #if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN)
-             if (_started)
-             {
-                 _command.Clear();
-                 _command.IssuePluginEvent(GetRenderEventFunc(), 1);
-                 Graphics.ExecuteCommandBuffer(_command);
-             }  
+            if (_started)
+            {
+                _command.Clear();
+                _command.IssuePluginEvent(GetRenderEventFunc(), 1);
+                Graphics.ExecuteCommandBuffer(_command);
+            }
 #endif
         }
 

@@ -12,7 +12,7 @@
 #include <vector>
 #include <wrl.h>
 
-class GstAVPipelineD3D11 : GstAVPipeline
+class GstAVPipelineD3D11 : public GstAVPipeline
 {
 
 private:
@@ -34,20 +34,17 @@ private:
 
 public:
     GstAVPipelineD3D11(IUnityInterfaces* s_UnityInterfaces);
-    ~GstAVPipelineD3D11();
 
     void Draw(bool left);
 
-    void CreatePipeline(const char* uri, const char* remote_peer_id);
     void CreateDevice();
     void DestroyPipeline() override;
 
     ID3D11Texture2D* CreateTexture(unsigned int width, unsigned int height, bool left = true);
-    void ReleaseTexture(ID3D11Texture2D* texture);
+    void ReleaseTexture(void* texture) override;
 
 private:
-    static void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data);
-    static void webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata);
+    void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) override;
 
     static GstFlowReturn GstAVPipelineD3D11::on_new_sample(GstAppSink* appsink, gpointer user_data);
 
@@ -63,6 +60,4 @@ private:
     static GstElement* add_audioconvert(GstElement* pipeline);
     static GstElement* add_audioresample(GstElement* pipeline);
     static GstElement* add_wasapi2sink(GstElement* pipeline);
-    static GstElement* add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
-                                     GstAVPipelineD3D11* self);
 };

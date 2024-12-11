@@ -22,6 +22,8 @@ set(SOURCE_FILES
 	src/GstBasePipeline.cpp
 	src/GstAVPipeline.cpp
 	src/GstAVPipeline.h
+	src/GstAVPipelineD3D11.h
+	src/GstAVPipelineD3D11.cpp
 	src/GstMicPipeline.cpp
 	src/GstMicPipeline.h
 	src/GstDataPipeline.cpp
@@ -30,6 +32,7 @@ set(SOURCE_FILES
 	src/Unity/IUnityGraphics.h
 	src/Unity/IUnityGraphicsD3D11.h
 	src/Unity/IUnityInterface.h
+	src/Unity/PlatformBase.h
 )
 
 link_directories(${GST_LIBRARY_DIRS})

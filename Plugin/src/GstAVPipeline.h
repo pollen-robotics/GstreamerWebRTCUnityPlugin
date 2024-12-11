@@ -18,7 +18,6 @@ public:
     ~GstAVPipeline();
 
     void CreatePipeline(const char* uri, const char* remote_peer_id);
-    void CreateDevice();
     virtual void ReleaseTexture(void* texture) = 0;
 
 protected:
