@@ -19,6 +19,7 @@ public:
 
     void CreatePipeline(const char* uri, const char* remote_peer_id);
     void CreateDevice();
+    virtual void ReleaseTexture(void* texture) = 0;
 
 protected:
     virtual void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) = 0;

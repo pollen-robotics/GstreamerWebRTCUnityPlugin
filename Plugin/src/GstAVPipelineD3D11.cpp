@@ -2,8 +2,8 @@
  This source code is licensed under the license found in the
  LICENSE file in the root directory of this source tree. */
 
+#include "GstAVPipelineD3D11.h"
 #include "DebugLog.h"
-#include "GstAVPipeline.h"
 
 #include <d3d11_1.h>
 #include <d3d11sdklayers.h>
@@ -17,7 +17,7 @@ using namespace Microsoft::WRL;
 // Creates the underlying D3D11 texture using the provided unity device.
 // This texture can then be turned into a proper Unity texture on the
 // managed side using Texture2D.CreateExternalTexture()
-ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int height, bool left)
+ID3D11Texture2D* GstAVPipelineD3D11::CreateTexture(unsigned int width, unsigned int height, bool left)
 {
     auto device = _s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice();
     HRESULT hr = S_OK;
@@ -96,7 +96,7 @@ ID3D11Texture2D* GstAVPipeline::CreateTexture(unsigned int width, unsigned int h
     return texture.Get();
 }
 
-GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_data)
+GstFlowReturn GstAVPipelineD3D11::on_new_sample(GstAppSink* appsink, gpointer user_data)
 {
     AppData* data = static_cast<AppData*>(user_data);
     GstSample* sample = gst_app_sink_pull_sample(appsink);
@@ -139,7 +139,7 @@ GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_da
     return GST_FLOW_OK;
 }
 
-void GstAVPipeline::Draw(bool left)
+void GstAVPipelineD3D11::Draw(bool left)
 {
     AppData* data;
     if (left)
@@ -179,7 +179,7 @@ void GstAVPipeline::Draw(bool left)
     gst_sample_unref(sample);
 }
 
-GstElement* GstAVPipeline::add_rtph264depay(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_rtph264depay(GstElement* pipeline)
 {
     GstElement* rtph264depay = gst_element_factory_make("rtph264depay", nullptr);
     if (!rtph264depay)
@@ -191,7 +191,7 @@ GstElement* GstAVPipeline::add_rtph264depay(GstElement* pipeline)
     return rtph264depay;
 }
 
-GstElement* GstAVPipeline::add_h264parse(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_h264parse(GstElement* pipeline)
 {
     GstElement* h264parse = gst_element_factory_make("h264parse", nullptr);
     if (!h264parse)
@@ -203,7 +203,7 @@ GstElement* GstAVPipeline::add_h264parse(GstElement* pipeline)
     return h264parse;
 }
 
-GstElement* GstAVPipeline::add_d3d11h264dec(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_d3d11h264dec(GstElement* pipeline)
 {
     GstElement* d3d11h264dec = gst_element_factory_make("d3d11h264dec", nullptr);
     if (!d3d11h264dec)
@@ -215,7 +215,7 @@ GstElement* GstAVPipeline::add_d3d11h264dec(GstElement* pipeline)
     return d3d11h264dec;
 }
 
-GstElement* GstAVPipeline::add_d3d11convert(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_d3d11convert(GstElement* pipeline)
 {
     GstElement* d3d11convert = gst_element_factory_make("d3d11convert", nullptr);
     if (!d3d11convert)
@@ -227,7 +227,7 @@ GstElement* GstAVPipeline::add_d3d11convert(GstElement* pipeline)
     return d3d11convert;
 }
 
-GstElement* GstAVPipeline::add_appsink(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_appsink(GstElement* pipeline)
 {
     GstElement* appsink = gst_element_factory_make("appsink", nullptr);
     if (!appsink)
@@ -244,7 +244,7 @@ GstElement* GstAVPipeline::add_appsink(GstElement* pipeline)
     return appsink;
 }
 
-GstElement* GstAVPipeline::add_rtpopusdepay(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_rtpopusdepay(GstElement* pipeline)
 {
     GstElement* rtpopusdepay = gst_element_factory_make("rtpopusdepay", nullptr);
     if (!rtpopusdepay)
@@ -257,7 +257,7 @@ GstElement* GstAVPipeline::add_rtpopusdepay(GstElement* pipeline)
     return rtpopusdepay;
 }
 
-GstElement* GstAVPipeline::add_opusdec(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_opusdec(GstElement* pipeline)
 {
     GstElement* opusdec = gst_element_factory_make("opusdec", nullptr);
     if (!opusdec)
@@ -270,7 +270,7 @@ GstElement* GstAVPipeline::add_opusdec(GstElement* pipeline)
     return opusdec;
 }
 
-GstElement* GstAVPipeline::add_audioconvert(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_audioconvert(GstElement* pipeline)
 {
     GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
     if (!audioconvert)
@@ -283,7 +283,7 @@ GstElement* GstAVPipeline::add_audioconvert(GstElement* pipeline)
     return audioconvert;
 }
 
-GstElement* GstAVPipeline::add_audioresample(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_audioresample(GstElement* pipeline)
 {
     GstElement* audioresample = gst_element_factory_make("audioresample", nullptr);
     if (!audioresample)
@@ -296,7 +296,7 @@ GstElement* GstAVPipeline::add_audioresample(GstElement* pipeline)
     return audioresample;
 }
 
-GstElement* GstAVPipeline::add_wasapi2sink(GstElement* pipeline)
+GstElement* GstAVPipelineD3D11::add_wasapi2sink(GstElement* pipeline)
 {
     GstElement* wasapi2sink = gst_element_factory_make("wasapi2sink", nullptr);
     if (!wasapi2sink)
@@ -310,8 +310,8 @@ GstElement* GstAVPipeline::add_wasapi2sink(GstElement* pipeline)
     return wasapi2sink;
 }
 
-GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
-                                         GstAVPipeline* self)
+GstElement* GstAVPipelineD3D11::add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
+                                              GstAVPipelineD3D11* self)
 {
     GstElement* webrtcsrc = gst_element_factory_make("webrtcsrc", nullptr);
     if (!webrtcsrc)
@@ -341,9 +341,9 @@ GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string
     return webrtcsrc;
 }
 
-void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data)
+void GstAVPipelineD3D11::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data)
 {
-    GstAVPipeline* avpipeline = static_cast<GstAVPipeline*>(data);
+    GstAVPipelineD3D11* avpipeline = static_cast<GstAVPipelineD3D11*>(data);
 
     gchar* pad_name = gst_pad_get_name(new_pad);
     Debug::Log("Adding pad ");
@@ -419,13 +419,13 @@ void GstAVPipeline::on_pad_added(GstElement* src, GstPad* new_pad, gpointer data
     g_free(pad_name);
 }
 
-void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
+void GstAVPipelineD3D11::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
 {
     Debug::Log("Configure webrtcbin", Level::Info);
     g_object_set(webrtcbin, "latency", 1, nullptr);
 }
 
-void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
+void GstAVPipelineD3D11::ReleaseTexture(ID3D11Texture2D* texture)
 {
     if (texture != nullptr)
     {
@@ -434,7 +434,7 @@ void GstAVPipeline::ReleaseTexture(ID3D11Texture2D* texture)
     }
 }
 
-GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces)
+GstAVPipelineD3D11::GstAVPipelineD3D11(IUnityInterfaces* s_UnityInterfaces)
     : GstBasePipeline("AVPipeline"), _s_UnityInterfaces(s_UnityInterfaces)
 {
     // preload plugins before Unity XR plugin
@@ -487,7 +487,7 @@ GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces)
     _render_info = GstVideoInfo();
 }
 
-GstAVPipeline::~GstAVPipeline()
+GstAVPipelineD3D11::~GstAVPipelineD3D11()
 {
     gst_clear_object(&_device);
     gst_object_unref(_device);
@@ -499,9 +499,9 @@ GstAVPipeline::~GstAVPipeline()
     preloaded_plugins.clear();
 }
 
-void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
+void GstAVPipelineD3D11::CreatePipeline(const char* uri, const char* remote_peer_id)
 {
-    Debug::Log("GstAVPipeline create pipeline", Level::Info);
+    Debug::Log("GstAVPipelineD3D11 create pipeline", Level::Info);
     Debug::Log(uri, Level::Info);
     Debug::Log(remote_peer_id, Level::Info);
 
@@ -512,7 +512,7 @@ void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
     CreateBusThread();
 }
 
-void GstAVPipeline::CreateDevice()
+void GstAVPipelineD3D11::CreateDevice()
 {
     if (_device == nullptr)
     {
@@ -543,7 +543,7 @@ void GstAVPipeline::CreateDevice()
     }
 }
 
-void GstAVPipeline::DestroyPipeline()
+void GstAVPipelineD3D11::DestroyPipeline()
 {
     GstBasePipeline::DestroyPipeline();
 
@@ -564,9 +564,9 @@ void GstAVPipeline::DestroyPipeline()
     // pDebug = nullptr;
 }
 
-GstBusSyncReply GstAVPipeline::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data)
+GstBusSyncReply GstAVPipelineD3D11::busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data)
 {
-    auto self = (GstAVPipeline*)user_data;
+    auto self = (GstAVPipelineD3D11*)user_data;
 
     switch (GST_MESSAGE_TYPE(msg))
     {

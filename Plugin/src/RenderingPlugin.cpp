@@ -72,6 +72,8 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* 
 {
 #if UNIY_WIN
     gstAVPipeline->ReleaseTexture((ID3D11Texture2D*)texPtr);
+#elif UNITY_ANDROID
+    gstAVPipeline->ReleaseTexture(texPtr);
 #endif
 }
 
