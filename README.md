@@ -68,10 +68,11 @@ Figure can be generated with [graphviz](https://graphviz.org/)
 dot -Tpng -O pipeline.dot
 ```
 
-## Android
+## Android (WIP)
 
-cmake .. -DCMAKE_TOOLCHAIN_FILE=/mnt/data/fabien/android/Sdk/ndk/25.2.9519653/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 -DANDROID_GSTREAMER_NDK_PATH=/mnt/data/fabien/android/gstreamer-1.0-android-universal-1.24.9/arm64 
+```console
+cd Plugin/android
+./build.sh
+```
 
--DANDROID_STL=c++_shared
-
-use build.sh in Gstreamer instead
+You have to manually edit the paths in build.sh
