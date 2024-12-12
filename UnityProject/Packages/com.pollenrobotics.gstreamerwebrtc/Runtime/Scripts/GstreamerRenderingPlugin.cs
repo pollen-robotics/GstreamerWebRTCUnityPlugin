@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using UnityEngine.Rendering;
 using UnityEngine.Events;
 using System.Collections;
-
+using UnityEngine.Android;
 
 namespace GstreamerWebRTC
 {
@@ -96,6 +96,8 @@ namespace GstreamerWebRTC
             _command = new CommandBuffer();
 
 #if UNITY_ANDROID
+            CheckMicPermission();
+            
             _command.IssuePluginEvent(GetRenderEventFunc(), 1);
             Camera.main.AddCommandBuffer(CameraEvent.BeforeSkybox, _command);
 
@@ -122,6 +124,19 @@ namespace GstreamerWebRTC
         }
 
 #if UNITY_ANDROID
+        private void CheckMicPermission()
+        {
+            if (Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            {
+                Debug.Log("Microphone permission already granted");
+            }
+            else
+            {
+                Permission.RequestUserPermission(Permission.Microphone);
+            }
+
+        }
+
         public bool IsNativePtrSet()
         {
             return nativeTexPtrSet;

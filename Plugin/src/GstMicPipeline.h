@@ -13,10 +13,8 @@ public:
 
     void CreatePipeline(const char* uri, const char* remote_peer_id);
 
-private:  
+private:
     static void consumer_added_callback(GstElement* consumer_id, gchararray webrtcbin, GstElement* arg1, gpointer udata);
-    static GstElement* add_queue(GstElement* pipeline);
-    static GstElement* add_audioconvert(GstElement* pipeline);
     static GstElement* add_wasapi2src(GstElement* pipeline);
     static GstElement* add_opusenc(GstElement* pipeline);
     static GstElement* add_audio_caps_capsfilter(GstElement* pipeline);

@@ -3,15 +3,14 @@
  LICENSE file in the root directory of this source tree. */
 
 #include "GstDataPipeline.h"
+#include "GstMicPipeline.h"
 #include "Unity/IUnityGraphics.h"
 #include "Unity/PlatformBase.h"
-//#include <assert.h>
+// #include <assert.h>
 
 #if UNITY_WIN
 #include "GstAVPipelineD3D11.h"
-#include "GstMicPipeline.h"
 
-static std::unique_ptr<GstMicPipeline> gstMicPipeline = nullptr;
 static std::unique_ptr<GstAVPipelineD3D11> gstAVPipeline = nullptr;
 
 #elif UNITY_ANDROID
@@ -33,6 +32,7 @@ static jobject surface_plugin = nullptr;
 
 #endif
 
+static std::unique_ptr<GstMicPipeline> gstMicPipeline = nullptr;
 static std::unique_ptr<GstDataPipeline> gstDataPipeline = nullptr;
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
@@ -55,9 +55,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetSurface(jobject su
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id)
 {
     gstAVPipeline->CreatePipeline(uri, remote_peer_id);
-#if UNITY_WIN
     gstMicPipeline->CreatePipeline(uri, remote_peer_id);
-#endif
 }
 
 extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API CreateTexture(unsigned int width, unsigned int height, bool left)
@@ -76,9 +74,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline()
 {
     gstAVPipeline->DestroyPipeline();
-#if UNITY_WIN
     gstMicPipeline->DestroyPipeline();
-#endif
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyDataPipeline() { gstDataPipeline->DestroyPipeline(); }
@@ -127,12 +123,11 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 #if UNITY_WIN
     gst_init(nullptr, nullptr);
     gstAVPipeline = std::make_unique<GstAVPipelineD3D11>(unityInterfaces);
-    gstMicPipeline = std::make_unique<GstMicPipeline>();
 #elif UNITY_ANDROID
     // gst_init done in the java side
     gstAVPipeline = std::make_unique<GstAVPipelineOpenGLES>(unityInterfaces);
 #endif
-
+    gstMicPipeline = std::make_unique<GstMicPipeline>();
     gstDataPipeline = std::make_unique<GstDataPipeline>();
 }
 

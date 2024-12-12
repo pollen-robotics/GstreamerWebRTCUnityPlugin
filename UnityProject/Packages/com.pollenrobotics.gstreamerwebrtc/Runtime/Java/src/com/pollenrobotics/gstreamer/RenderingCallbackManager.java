@@ -1,6 +1,7 @@
 package com.pollenrobotics.gstreamer;
 
 import java.util.ArrayList;
+import android.util.Log;
 
 public class RenderingCallbackManager {
     @SuppressWarnings("JniMissingFunction")

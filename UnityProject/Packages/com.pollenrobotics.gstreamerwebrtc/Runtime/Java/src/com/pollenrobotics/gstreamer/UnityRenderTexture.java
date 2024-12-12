@@ -81,7 +81,7 @@ public class UnityRenderTexture implements SurfaceTexture.OnFrameAvailableListen
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
         RenderingCallbackManager.Instance().SubscribeOneShot(eventCode->{
-            surfaceTexture.updateTexImage();
+                surfaceTexture.updateTexImage();            
         });
     }
 }

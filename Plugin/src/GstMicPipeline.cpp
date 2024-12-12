@@ -2,12 +2,13 @@
  This source code is licensed under the license found in the
  LICENSE file in the root directory of this source tree. */
 
-#include "DebugLog.h"
 #include "GstMicPipeline.h"
+#include "DebugLog.h"
+#include "Unity/PlatformBase.h"
 
 GstMicPipeline::GstMicPipeline() : GstBasePipeline("MicPipeline") {}
 
-void GstMicPipeline::CreatePipeline(const char* uri, const char* remote_peer_id) 
+void GstMicPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 {
     Debug::Log("GstMicPipeline create pipeline", Level::Info);
     Debug::Log(uri, Level::Info);
@@ -15,15 +16,21 @@ void GstMicPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 
     GstBasePipeline::CreatePipeline();
 
-    GstElement* wasapi2src = add_wasapi2src(pipeline_);
+#if UNITY_WIN
+    GstElement* audiosrc = add_wasapi2src(pipeline_);
+#elif UNITY_ANDROID
+    GstElement* audiosrc = add_by_name(pipeline_, "openslessrc");
+#endif
     GstElement* webrtcdsp = add_webrtcdsp(pipeline_);
-    GstElement* audioconvert = add_audioconvert(pipeline_);
-    GstElement* queue = add_queue(pipeline_);
+    GstElement* audioconvert = add_by_name(pipeline_, "audioconvert");
+    GstElement* audioresample = add_by_name(pipeline_, "audioresample");
+    GstElement* queue = add_by_name(pipeline_, "queue");
     GstElement* opusenc = add_opusenc(pipeline_);
     GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(pipeline_);
     GstElement* webrtcsink = add_webrtcsink(pipeline_, uri);
 
-    if (!gst_element_link_many(wasapi2src, queue, audioconvert, webrtcdsp, opusenc, audio_caps_capsfilter, webrtcsink, nullptr))
+    if (!gst_element_link_many(audiosrc, queue, audioconvert, audioresample, webrtcdsp, opusenc, audio_caps_capsfilter,
+                               webrtcsink, nullptr))
     {
         Debug::Log("Audio sending elements could not be linked.", Level::Error);
     }
@@ -45,32 +52,6 @@ GstElement* GstMicPipeline::add_wasapi2src(GstElement* pipeline)
     return wasapi2src;
 }
 
-GstElement* GstMicPipeline::add_queue(GstElement* pipeline)
-{
-    GstElement* queue = gst_element_factory_make("queue", nullptr);
-    if (!queue)
-    {
-        Debug::Log("Failed to create queue", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), queue);
-    return queue;
-}
-
-GstElement* GstMicPipeline::add_audioconvert(GstElement* pipeline)
-{
-    GstElement* audioconvert = gst_element_factory_make("audioconvert", nullptr);
-    if (!audioconvert)
-    {
-        Debug::Log("Failed to create audioconvert", Level::Error);
-        return nullptr;
-    }
-
-    gst_bin_add(GST_BIN(pipeline), audioconvert);
-    return audioconvert;
-}
-
 GstElement* GstMicPipeline::add_opusenc(GstElement* pipeline)
 {
     GstElement* opusenc = gst_element_factory_make("opusenc", nullptr);
@@ -80,7 +61,7 @@ GstElement* GstMicPipeline::add_opusenc(GstElement* pipeline)
         return nullptr;
     }
 
-    g_object_set(opusenc, "audio-type", "restricted-lowdelay", "frame-size", 10, nullptr);
+    g_object_set(opusenc, "audio-type", /*"restricted-lowdelay"*/ 2051, "frame-size", 10, nullptr);
 
     gst_bin_add(GST_BIN(pipeline), opusenc);
     return opusenc;
@@ -134,7 +115,7 @@ GstElement* GstMicPipeline::add_webrtcsink(GstElement* pipeline, const std::stri
     gst_structure_free(meta_structure);
     g_value_unset(&meta_value);
 
-    g_object_set(webrtcsink, "stun-server", nullptr, "do-restransmission", false, nullptr);
+    g_object_set(webrtcsink, "stun-server", nullptr, "do-retransmission", false, nullptr);
 
     g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), nullptr);
 
