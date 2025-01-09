@@ -139,7 +139,7 @@ GstFlowReturn GstAVPipeline::on_new_sample(GstAppSink* appsink, gpointer user_da
     return GST_FLOW_OK;
 }
 
-void GstAVPipeline::Draw(bool left)
+bool GstAVPipeline::Draw(bool left)
 {
     AppData* data;
     if (left)
@@ -150,7 +150,7 @@ void GstAVPipeline::Draw(bool left)
     if (data == nullptr)
     {
         Debug::Log("data is null", Level::Warning);
-        return;
+        return false;
     }
 
     GstSample* sample = nullptr;
@@ -159,7 +159,7 @@ void GstAVPipeline::Draw(bool left)
     std::lock_guard<std::mutex> lk(data->lock);
     /* If there's no updated sample, don't need to render again */
     if (!data->last_sample)
-        return;
+        return false;
 
     sample = data->last_sample;
     data->last_sample = nullptr;
@@ -169,7 +169,7 @@ void GstAVPipeline::Draw(bool left)
     {
         Debug::Log("Sample without buffer", Level::Error);
         gst_sample_unref(sample);
-        return;
+        return false;
     }
 
     data->keyed_mutex->ReleaseSync(0);
@@ -177,6 +177,7 @@ void GstAVPipeline::Draw(bool left)
     gst_d3d11_converter_convert_buffer(data->conv, buf, data->shared_buffer);
     data->keyed_mutex->AcquireSync(0, INFINITE);
     gst_sample_unref(sample);
+    return true;
 }
 
 GstElement* GstAVPipeline::add_rtph264depay(GstElement* pipeline)

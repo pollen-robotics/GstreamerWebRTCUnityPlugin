@@ -5,8 +5,6 @@
 #pragma once
 #include <sstream>
 #include <stdio.h>
-#include <stdio.h>
-#include <string>
 
 #define DLLExport __declspec(dllexport)
 

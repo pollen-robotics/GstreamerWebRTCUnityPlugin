@@ -40,7 +40,7 @@ public:
     GstAVPipeline(IUnityInterfaces* s_UnityInterfaces);
     ~GstAVPipeline();
 
-    void Draw(bool left);
+    bool Draw(bool left);
 
     void CreatePipeline(const char* uri, const char* remote_peer_id);
     void CreateDevice();

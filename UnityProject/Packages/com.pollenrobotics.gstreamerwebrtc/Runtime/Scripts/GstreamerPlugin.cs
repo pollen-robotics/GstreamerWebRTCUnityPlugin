@@ -16,6 +16,8 @@ namespace GstreamerWebRTC
         public RawImage leftRawImage;
         [Tooltip("RawImage on which the right texture will be rendered")]
         public RawImage rightRawImage;
+        public Renderer screen;
+
         protected GStreamerRenderingPlugin renderingPlugin = null;
 
         protected GStreamerDataPlugin dataPlugin = null;
@@ -68,12 +70,20 @@ namespace GstreamerWebRTC
             if (rightRawImage == null)
                 Debug.LogError("Right image is not assigned!");
 
+
+
             Texture left = null, right = null;
             renderingPlugin = new GStreamerRenderingPlugin(ip_address, ref left, ref right);
             leftRawImage.texture = left;
             rightRawImage.texture = right;
+            /*screen.GetPropertyBlock(myBlock);
+            myBlock.SetTexture("_LeftTex", left);
+            myBlock.SetTexture("_RightTex", right);*/
+            screen.material.SetTexture("_LeftTex", left);
+            screen.material.SetTexture("_RightTex", right);
             renderingPlugin.event_OnPipelineStarted.AddListener(PipelineStarted);
             renderingPlugin.event_OnPipelineStopped.AddListener(PipelineStopped);
+            GStreamerRenderingPlugin.event_OnFrameDrawn.AddListener(FrameRendered);
             renderingPlugin.Connect();
         }
 
@@ -91,6 +101,11 @@ namespace GstreamerWebRTC
         {
             Debug.Log("Pipeline started");
             event_OnPipelineRenderingRunning.Invoke(true);
+        }
+
+        protected virtual void FrameRendered()
+        {
+            Debug.Log("Frame rendered");
         }
 
         protected virtual void PipelineDataStarted()

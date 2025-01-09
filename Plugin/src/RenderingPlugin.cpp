@@ -68,6 +68,14 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelComma
     gstDataPipeline->send_byte_array_channel_command(data, size);
 }
 
+extern "C"
+{
+    // Create a callback delegate to notify when a texture was drawn
+    typedef void (*FuncCallBack)(void);
+    static FuncCallBack callbackInstanceDrawn = nullptr;
+    void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RegisterDrawnCallback(FuncCallBack cb) { callbackInstanceDrawn = cb; };
+}
+
 // --------------------------------------------------------------------------
 // UnitySetInterfaces
 
@@ -96,8 +104,12 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
     if (eventID == 1)
     {
-        gstAVPipeline->Draw(true);
-        gstAVPipeline->Draw(false);
+       bool left = gstAVPipeline->Draw(true);
+       bool right = gstAVPipeline->Draw(false);
+       if (left || right)
+       {
+           callbackInstanceDrawn();
+       }
     }
 }
 
