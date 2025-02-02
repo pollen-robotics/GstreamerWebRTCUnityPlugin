@@ -25,12 +25,14 @@ void GstDataPipeline::CreatePipeline()
 void GstDataPipeline::DestroyPipeline()
 {
     gst_webrtc_data_channel_close(channel_service_);
-    gst_webrtc_data_channel_close(channel_command_);
+    gst_webrtc_data_channel_close(channel_command_reliable_);
+    gst_webrtc_data_channel_close(channel_command_lossy_);
     gst_webrtc_data_channel_close(channel_audit_);
 
     channel_service_ = nullptr;
     channel_audit_ = nullptr;
-    channel_command_ = nullptr;
+    channel_command_reliable_ = nullptr;
+    channel_command_lossy_ = nullptr;
 
     GstBasePipeline::DestroyPipeline();
 }
@@ -203,13 +205,21 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     {
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_audit), nullptr);
     }
-    else if (starts_with(label_str, CHANNEL_REACHY_COMMAND))
+    else if (starts_with(label_str, CHANNEL_REACHY_COMMAND_RELIABLE))
     {
-        self->channel_command_ = channel;
-        if (callbackChannelCommandOpenInstance != nullptr)        
-            callbackChannelCommandOpenInstance();    
+        self->channel_command_reliable_ = channel;
+        if (callbackChannelCommandReliableOpenInstance != nullptr)        
+            callbackChannelCommandReliableOpenInstance();    
         else
-            Debug::Log("Fails to notify opening of command channel", Level::Warning);
+            Debug::Log("Fails to notify opening of reliable command channel", Level::Warning);
+    }
+    else if (starts_with(label_str, CHANNEL_REACHY_COMMAND_LOSSY))
+    {
+        self->channel_command_lossy_ = channel;
+        if (callbackChannelCommandLossyOpenInstance != nullptr)
+            callbackChannelCommandLossyOpenInstance();
+        else
+            Debug::Log("Fails to notify opening of reliable command channel", Level::Warning);
     }
     else
     {
@@ -235,12 +245,20 @@ void GstDataPipeline::send_byte_array_channel_service(const unsigned char* data,
         Debug::Log("channel service is not initialized ", Level::Warning);
 }
 
-void GstDataPipeline::send_byte_array_channel_command(const unsigned char* data, size_t size) 
+void GstDataPipeline::send_byte_array_channel_command_reliable(const unsigned char* data, size_t size) 
 {
-    if (channel_command_ != nullptr)
-        send_byte_array(channel_command_, data, size);
+    if (channel_command_reliable_ != nullptr)
+        send_byte_array(channel_command_reliable_, data, size);
     else
-        Debug::Log("channel command is not initialized ", Level::Warning);
+        Debug::Log("channel reliable command is not initialized ", Level::Warning);
+}
+
+void GstDataPipeline::send_byte_array_channel_command_lossy(const unsigned char* data, size_t size)
+{
+    if (channel_command_reliable_ != nullptr)
+        send_byte_array(channel_command_lossy_, data, size);
+    else
+        Debug::Log("channel lossy command is not initialized ", Level::Warning);
 }
 
 void GstDataPipeline::on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
@@ -298,7 +316,8 @@ GstElement* GstDataPipeline::add_webrtcbin()
 // Create a callback delegate
 void RegisterICECallback(FuncCallBackICE cb) { callbackICEInstance = cb; }
 void RegisterSDPCallback(FuncCallBackSDP cb) { callbackSDPInstance = cb; }
-void RegisterChannelCommandOpenCallback(FuncCallBackChannelOpen cb) { callbackChannelCommandOpenInstance = cb; }
+void RegisterChannelReliableCommandOpenCallback(FuncCallBackChannelOpen cb) { callbackChannelCommandReliableOpenInstance = cb; }
+void RegisterChannelLossyCommandOpenCallback(FuncCallBackChannelOpen cb) { callbackChannelCommandLossyOpenInstance = cb; }
 void RegisterChannelServiceOpenCallback(FuncCallBackChannelOpen cb) { callbackChannelServiceOpenInstance = cb; }
 void RegisterChannelServiceDataCallback(FuncCallBackChannelData cb) { callbackChannelServiceDataInstance = cb; }
 void RegisterChannelStateDataCallback(FuncCallBackChannelData cb) { callbackChannelStateDataInstance = cb; }
@@ -307,5 +326,6 @@ void RegisterChannelAuditDataCallback(FuncCallBackChannelData cb) { callbackChan
 //const 
 const std::string GstDataPipeline::CHANNEL_SERVICE = "service";
 const std::string GstDataPipeline::CHANNEL_REACHY_STATE = "reachy_state";
-const std::string GstDataPipeline::CHANNEL_REACHY_COMMAND = "reachy_command";
+const std::string GstDataPipeline::CHANNEL_REACHY_COMMAND_RELIABLE = "reachy_command_reliable";
+const std::string GstDataPipeline::CHANNEL_REACHY_COMMAND_LOSSY = "reachy_command_lossy";
 const std::string GstDataPipeline::CHANNEL_REACHY_AUDIT = "reachy_audit";

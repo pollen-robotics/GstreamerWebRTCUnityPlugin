@@ -25,8 +25,11 @@ extern "C"
     static FuncCallBackChannelOpen callbackChannelServiceOpenInstance = nullptr;
     DLLExport void RegisterChannelServiceOpenCallback(FuncCallBackChannelOpen cb);
 
-    static FuncCallBackChannelOpen callbackChannelCommandOpenInstance = nullptr;
-    DLLExport void RegisterChannelCommandOpenCallback(FuncCallBackChannelOpen cb);
+    static FuncCallBackChannelOpen callbackChannelCommandReliableOpenInstance = nullptr;
+    DLLExport void RegisterChannelReliableCommandOpenCallback(FuncCallBackChannelOpen cb);
+
+    static FuncCallBackChannelOpen callbackChannelCommandLossyOpenInstance = nullptr;
+    DLLExport void RegisterChannelLossyCommandOpenCallback(FuncCallBackChannelOpen cb);
 
     typedef void (*FuncCallBackChannelData)(const uint8_t * message, int size);
     static FuncCallBackChannelData callbackChannelServiceDataInstance = nullptr;
@@ -45,10 +48,12 @@ private:
     GstElement* webrtcbin_ = nullptr;
     static const std::string CHANNEL_SERVICE;
     static const std::string CHANNEL_REACHY_STATE;
-    static const std::string CHANNEL_REACHY_COMMAND;
+    static const std::string CHANNEL_REACHY_COMMAND_RELIABLE;
+    static const std::string CHANNEL_REACHY_COMMAND_LOSSY;
     static const std::string CHANNEL_REACHY_AUDIT;
     GstWebRTCDataChannel* channel_service_ = nullptr;    
-    GstWebRTCDataChannel* channel_command_ = nullptr;
+    GstWebRTCDataChannel* channel_command_reliable_ = nullptr;
+    GstWebRTCDataChannel* channel_command_lossy_ = nullptr;
     GstWebRTCDataChannel* channel_audit_ = nullptr;
 
 
@@ -59,7 +64,8 @@ public:
     void SetOffer(const char* sdp_offer);
     void SetICECandidate(const char* candidate, int mline_index);
     void send_byte_array_channel_service(const unsigned char * data, size_t size);
-    void send_byte_array_channel_command(const unsigned char* data, size_t size);
+    void send_byte_array_channel_command_reliable(const unsigned char* data, size_t size);
+    void send_byte_array_channel_command_lossy(const unsigned char* data, size_t size);
 
 private:
     GstElement* add_webrtcbin();

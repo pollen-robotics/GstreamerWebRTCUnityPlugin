@@ -63,9 +63,15 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelServi
     gstDataPipeline->send_byte_array_channel_service(data, size);
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelCommand(const unsigned char* data, size_t size)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelReliableCommand(const unsigned char* data, size_t size)
 {
-    gstDataPipeline->send_byte_array_channel_command(data, size);
+    gstDataPipeline->send_byte_array_channel_command_reliable(data, size);
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelLossyCommand(const unsigned char* data,
+                                                                                           size_t size)
+{
+    gstDataPipeline->send_byte_array_channel_command_lossy(data, size);
 }
 
 // --------------------------------------------------------------------------
