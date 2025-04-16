@@ -566,7 +566,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   leftRawImage: {fileID: 380550528}
   rightRawImage: {fileID: 31189211}
-  ip_address: 10.0.1.36
+  ip_address: 10.0.1.30
+  event_OnPipelineRenderingRunning:
+    m_PersistentCalls:
+      m_Calls: []
+  event_OnPipelineDataRunning:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1875013641
 GameObject:
   m_ObjectHideFlags: 0

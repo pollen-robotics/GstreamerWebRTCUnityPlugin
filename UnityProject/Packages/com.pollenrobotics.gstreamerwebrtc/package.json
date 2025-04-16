@@ -1,6 +1,6 @@
 {
   "name": "com.pollenrobotics.gstreamerwebrtc",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Gstreamer webRTC",
   "description": "Exchange audio, video and data with a Reachy robot through webRTC using the Gstreamer framework.",
   "unity": "2022.3",
