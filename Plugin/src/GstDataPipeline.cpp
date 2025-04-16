@@ -7,17 +7,15 @@
 #include <gst/sdp/sdp.h>
 #include <gst/webrtc/webrtc.h>
 
-GstDataPipeline::GstDataPipeline() : GstBasePipeline("DataPipeline") {
-}
+GstDataPipeline::GstDataPipeline() : GstBasePipeline("DataPipeline") {}
 
-
-void GstDataPipeline::CreatePipeline() 
+void GstDataPipeline::CreatePipeline()
 {
     Debug::Log("GstDataPipeline create pipeline", Level::Info);
     GstBasePipeline::CreatePipeline();
 
     webrtcbin_ = add_webrtcbin();
-    auto state = gst_element_set_state(this->pipeline_, GstState::GST_STATE_READY);    
+    auto state = gst_element_set_state(this->pipeline_, GstState::GST_STATE_READY);
 
     CreateBusThread();
 }
@@ -37,7 +35,7 @@ void GstDataPipeline::DestroyPipeline()
     GstBasePipeline::DestroyPipeline();
 }
 
-void GstDataPipeline::SetOffer(const char* sdp_offer) 
+void GstDataPipeline::SetOffer(const char* sdp_offer)
 {
     Debug::Log("SDP Offer: " + std::string(sdp_offer));
     GstSDPMessage* sdpmsg = nullptr;
@@ -46,20 +44,18 @@ void GstDataPipeline::SetOffer(const char* sdp_offer)
     GstWebRTCSDPType sdp_type = GST_WEBRTC_SDP_TYPE_OFFER;
     GstWebRTCSessionDescription* offer = gst_webrtc_session_description_new(sdp_type, sdpmsg);
 
-
-    GstPromise* promise =
-        gst_promise_new_with_change_func(on_offer_set, webrtcbin_, nullptr);
+    GstPromise* promise = gst_promise_new_with_change_func(on_offer_set, webrtcbin_, nullptr);
 
     g_signal_emit_by_name(webrtcbin_, "set-remote-description", offer, promise, nullptr);
 
-    //gst_webrtc_session_description_free(offer); //raise breakpoint?
+    // gst_webrtc_session_description_free(offer); //raise breakpoint?
     gst_sdp_message_free(sdpmsg);
     gst_promise_unref(promise);
 }
 
-void GstDataPipeline::SetICECandidate(const char* candidate, int mline_index) 
+void GstDataPipeline::SetICECandidate(const char* candidate, int mline_index)
 {
-    Debug::Log("Add ICE Candidate: " + std::string(candidate) + " "+ std::to_string(mline_index));
+    Debug::Log("Add ICE Candidate: " + std::string(candidate) + " " + std::to_string(mline_index));
     g_signal_emit_by_name(webrtcbin_, "add-ice-candidate", mline_index, candidate);
 }
 
@@ -74,7 +70,6 @@ void GstDataPipeline::on_offer_set(GstPromise* promise, gpointer user_data)
     gst_promise_unref(promise);
 }
 
-
 void GstDataPipeline::on_answer_created(GstPromise* promise, gpointer user_data)
 {
     Debug::Log("create answer");
@@ -87,11 +82,10 @@ void GstDataPipeline::on_answer_created(GstPromise* promise, gpointer user_data)
     gst_structure_get(reply, "answer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &answer, nullptr);
     gst_promise_unref(promise);
 
-    //promise = gst_promise_new_with_change_func(on_answer_set, webrtc, nullptr);
+    // promise = gst_promise_new_with_change_func(on_answer_set, webrtc, nullptr);
     g_signal_emit_by_name(webrtc, "set-local-description", answer, nullptr);
-    //gst_promise_interrupt(promise);
-   // gst_promise_unref(promise);
-
+    // gst_promise_interrupt(promise);
+    // gst_promise_unref(promise);
 
     if (callbackICEInstance != nullptr)
     {
@@ -116,7 +110,6 @@ void GstDataPipeline::on_ice_candidate(GstElement* webrtcbin, guint mline_index,
         Debug::Log("callbackICEInstance is not initialized", Level::Error);
     }
 }
-
 
 /* void GstDataPipeline::on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
@@ -144,7 +137,6 @@ void GstDataPipeline::on_ice_candidate(GstElement* webrtcbin, guint mline_index,
     gst_structure_free(options);
 }*/
 
-
 void GstDataPipeline::on_ice_gathering_state_notify(GstElement* webrtcbin, GParamSpec* pspec, gpointer user_data)
 {
     GstWebRTCICEGatheringState ice_gather_state;
@@ -163,7 +155,7 @@ void GstDataPipeline::on_ice_gathering_state_notify(GstElement* webrtcbin, GPara
             new_state = "complete";
             break;
     }
-    Debug::Log("ICE gathering state changed to "+ new_state);
+    Debug::Log("ICE gathering state changed to " + new_state);
 }
 
 bool GstDataPipeline::starts_with(const std::string& str, const std::string& prefix)
@@ -188,16 +180,16 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
 
     if (label_str == CHANNEL_SERVICE)
     {
-        self->channel_service_ = channel;        
+        self->channel_service_ = channel;
 
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_service), nullptr);
 
-        if (callbackChannelServiceOpenInstance != nullptr)        
-            callbackChannelServiceOpenInstance();   
+        if (callbackChannelServiceOpenInstance != nullptr)
+            callbackChannelServiceOpenInstance();
         else
             Debug::Log("Fails to notify opening of service channel", Level::Warning);
     }
-    else if (starts_with(label_str,CHANNEL_REACHY_STATE))
+    else if (starts_with(label_str, CHANNEL_REACHY_STATE))
     {
         g_signal_connect(channel, "on-message-data", G_CALLBACK(on_message_data_state), nullptr);
     }
@@ -208,8 +200,8 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
     else if (starts_with(label_str, CHANNEL_REACHY_COMMAND_RELIABLE))
     {
         self->channel_command_reliable_ = channel;
-        if (callbackChannelCommandReliableOpenInstance != nullptr)        
-            callbackChannelCommandReliableOpenInstance();    
+        if (callbackChannelCommandReliableOpenInstance != nullptr)
+            callbackChannelCommandReliableOpenInstance();
         else
             Debug::Log("Fails to notify opening of reliable command channel", Level::Warning);
     }
@@ -219,13 +211,12 @@ void GstDataPipeline::on_data_channel(GstElement* webrtcbin, GstWebRTCDataChanne
         if (callbackChannelCommandLossyOpenInstance != nullptr)
             callbackChannelCommandLossyOpenInstance();
         else
-            Debug::Log("Fails to notify opening of reliable command channel", Level::Warning);
+            Debug::Log("Fails to notify opening of lossy command channel", Level::Warning);
     }
     else
     {
         Debug::Log("unknown data channel : " + label_str, Level::Warning);
     }
-
 }
 
 void GstDataPipeline::send_byte_array(GstWebRTCDataChannel* channel, const unsigned char* data, size_t size)
@@ -237,15 +228,15 @@ void GstDataPipeline::send_byte_array(GstWebRTCDataChannel* channel, const unsig
     g_bytes_unref(bytes);
 }
 
-void GstDataPipeline::send_byte_array_channel_service(const unsigned char* data, size_t size) 
+void GstDataPipeline::send_byte_array_channel_service(const unsigned char* data, size_t size)
 {
     if (channel_service_ != nullptr)
-        send_byte_array(channel_service_, data, size); 
+        send_byte_array(channel_service_, data, size);
     else
         Debug::Log("channel service is not initialized ", Level::Warning);
 }
 
-void GstDataPipeline::send_byte_array_channel_command_reliable(const unsigned char* data, size_t size) 
+void GstDataPipeline::send_byte_array_channel_command_reliable(const unsigned char* data, size_t size)
 {
     if (channel_command_reliable_ != nullptr)
         send_byte_array(channel_command_reliable_, data, size);
@@ -263,7 +254,7 @@ void GstDataPipeline::send_byte_array_channel_command_lossy(const unsigned char*
 
 void GstDataPipeline::on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
-    //Debug::Log("Data channel service message received", Level::Info);
+    // Debug::Log("Data channel service message received", Level::Info);
     if (callbackChannelServiceDataInstance != nullptr)
     {
         gsize size = g_bytes_get_size(data);
@@ -274,7 +265,7 @@ void GstDataPipeline::on_message_data_service(GstWebRTCDataChannel* channel, GBy
 
 void GstDataPipeline::on_message_data_state(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data)
 {
-    //Debug::Log("Data channel state message received", Level::Info);
+    // Debug::Log("Data channel state message received", Level::Info);
     if (callbackChannelStateDataInstance != nullptr)
     {
         gsize size = g_bytes_get_size(data);
@@ -312,7 +303,6 @@ GstElement* GstDataPipeline::add_webrtcbin()
     return webrtcbin;
 }
 
-
 // Create a callback delegate
 void RegisterICECallback(FuncCallBackICE cb) { callbackICEInstance = cb; }
 void RegisterSDPCallback(FuncCallBackSDP cb) { callbackSDPInstance = cb; }
@@ -323,7 +313,7 @@ void RegisterChannelServiceDataCallback(FuncCallBackChannelData cb) { callbackCh
 void RegisterChannelStateDataCallback(FuncCallBackChannelData cb) { callbackChannelStateDataInstance = cb; }
 void RegisterChannelAuditDataCallback(FuncCallBackChannelData cb) { callbackChannelAuditDataInstance = cb; }
 
-//const 
+// const
 const std::string GstDataPipeline::CHANNEL_SERVICE = "service";
 const std::string GstDataPipeline::CHANNEL_REACHY_STATE = "reachy_state";
 const std::string GstDataPipeline::CHANNEL_REACHY_COMMAND_RELIABLE = "reachy_command_reliable";
