@@ -17,14 +17,13 @@ public:
     GstAVPipeline(IUnityInterfaces* s_UnityInterfaces);
     ~GstAVPipeline();
 
-    void CreatePipeline(const char* uri, const char* remote_peer_id);
+    void CreatePipeline();
     virtual void ReleaseTexture(void* texture) = 0;
 
 protected:
-    virtual void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) = 0;
-    static void on_pad_added_wrapper(GstElement* src, GstPad* new_pad, gpointer data);
+    // virtual void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) = 0;
+    // static void on_pad_added_wrapper(GstElement* src, GstPad* new_pad, gpointer data);
     static void webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata);
 
-    static GstElement* add_webrtcsrc(GstElement* pipeline, const std::string& remote_peer_id, const std::string& uri,
-                                     GstAVPipeline* self);
+     virtual void createCustomPipeline() = 0;
 };

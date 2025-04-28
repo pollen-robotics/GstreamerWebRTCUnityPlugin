@@ -2,8 +2,6 @@
  This source code is licensed under the license found in the
  LICENSE file in the root directory of this source tree. */
 
-#include "GstDataPipeline.h"
-#include "GstMicPipeline.h"
 #include "Unity/IUnityGraphics.h"
 #include "Unity/PlatformBase.h"
 // #include <assert.h>
@@ -17,9 +15,9 @@ static std::unique_ptr<GstAVPipelineD3D11> gstAVPipeline = nullptr;
 #include "GstAVPipelineOpenGLES.h"
 #include <jni.h>
 static std::unique_ptr<GstAVPipelineOpenGLES> gstAVPipeline = nullptr;
-//  static JNIEnv* jni_env = nullptr;
 static JavaVM* ms2_vm = nullptr;
-static jobject gCallbackObject;
+static void* g_TextureHandle_left = nullptr;
+static void* g_TextureHandle_right = nullptr;
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
@@ -28,12 +26,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
     return JNI_VERSION_1_6;
 }
 
-static jobject surface_plugin = nullptr;
-
 #endif
-
-static std::unique_ptr<GstMicPipeline> gstMicPipeline = nullptr;
-static std::unique_ptr<GstDataPipeline> gstDataPipeline = nullptr;
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
 {
@@ -42,26 +35,14 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
 #endif
 }
 
-#if UNITY_ANDROID
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetSurface(jobject surface, bool left)
-{
-    // GstAVPipelineOpenGLES* avpipeline = static_cast<GstAVPipelineOpenGLES*>(gstAVPipeline.get());
-    JNIEnv* jni_env = nullptr;
-    ms2_vm->AttachCurrentThread(&jni_env, 0);
-    gstAVPipeline->SetNativeWindow(jni_env, surface, left);
-}
-#endif
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id)
-{
-    gstAVPipeline->CreatePipeline(uri, remote_peer_id);
-    gstMicPipeline->CreatePipeline(uri, remote_peer_id);
-}
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline() { gstAVPipeline->CreatePipeline(); }
 
 extern "C" UNITY_INTERFACE_EXPORT void* UNITY_INTERFACE_API CreateTexture(unsigned int width, unsigned int height, bool left)
 {
 #if UNITY_WIN
     return gstAVPipeline->CreateTexture(width, height, left);
+#elif UNITY_ANDROID
+    return gstAVPipeline->CreateTexture(left);
 #endif
     return nullptr;
 }
@@ -71,43 +52,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* 
     gstAVPipeline->ReleaseTexture(texPtr);
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline()
-{
-    gstAVPipeline->DestroyPipeline();
-    gstMicPipeline->DestroyPipeline();
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyDataPipeline() { gstDataPipeline->DestroyPipeline(); }
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDataPipeline() { gstDataPipeline->CreatePipeline(); }
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetSDPOffer(const char* sdp_offer)
-{
-    gstDataPipeline->SetOffer(sdp_offer);
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetICECandidate(const char* candidate, int mline_index)
-{
-    gstDataPipeline->SetICECandidate(candidate, mline_index);
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelService(const unsigned char* data, size_t size)
-{
-    gstDataPipeline->send_byte_array_channel_service(data, size);
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelCommand(const unsigned char* data, size_t size)
-{
-    gstDataPipeline->send_byte_array_channel_command(data, size);
-}
-
-#if UNITY_ANDROID
-extern "C" JNIEXPORT void JNICALL Java_com_pollenrobotics_gstreamer_RenderingCallbackManager_nativeInit(JNIEnv* env,
-                                                                                                        jobject obj)
-{
-    gCallbackObject = env->NewGlobalRef(obj);
-}
-#endif
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline() { gstAVPipeline->DestroyPipeline(); }
 
 // --------------------------------------------------------------------------
 // UnitySetInterfaces
@@ -116,7 +61,8 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 {
     // const char* internalStoragePath = getenv("EXTERNAL_STORAGE");
     // td::string logFilePath = std::string(internalStoragePath) + "/gstreamer.log";
-    /* setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer.log", 1);
+    /*setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer/gstreamer.log",
+           1);
     setenv("GST_DEBUG_NO_COLOR", "1", 1);
     setenv("GST_DEBUG", "4", 1);*/
 
@@ -127,8 +73,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     // gst_init done in the java side
     gstAVPipeline = std::make_unique<GstAVPipelineOpenGLES>(unityInterfaces);
 #endif
-    gstMicPipeline = std::make_unique<GstMicPipeline>();
-    gstDataPipeline = std::make_unique<GstDataPipeline>();
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
@@ -151,9 +95,9 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
         gstAVPipeline->Draw(false);
     }
 #elif UNITY_ANDROID
+
     int status;
     JNIEnv* env;
-    int isAttached = 0;
 
     if ((status = ms2_vm->GetEnv((void**)&env, JNI_VERSION_1_6)) < 0)
     {
@@ -161,29 +105,21 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
         {
             return;
         }
-        isAttached = 1;
     }
 
-    jclass cls = env->GetObjectClass(gCallbackObject);
-    if (!cls)
+    if (eventID == 0)
     {
-        if (isAttached)
-            ms2_vm->DetachCurrentThread();
-        return;
+        int height = 720;
+        int width = 960;
+        gstAVPipeline->CreateTextureAndSurfaces(env, width, height, true);
+        gstAVPipeline->CreateTextureAndSurfaces(env, width, height, false);
     }
-
-    jmethodID method = env->GetMethodID(cls, "JavaOnRenderEvent", "(I)V");
-    if (!method)
+    else if (eventID == 1)
     {
-        if (isAttached)
-            ms2_vm->DetachCurrentThread();
-        return;
+        gstAVPipeline->Draw(env, true);
+        gstAVPipeline->Draw(env, false);
     }
 
-    env->CallVoidMethod(gCallbackObject, method, eventID);
-
-    if (isAttached)
-        ms2_vm->DetachCurrentThread();
 #endif
 }
 

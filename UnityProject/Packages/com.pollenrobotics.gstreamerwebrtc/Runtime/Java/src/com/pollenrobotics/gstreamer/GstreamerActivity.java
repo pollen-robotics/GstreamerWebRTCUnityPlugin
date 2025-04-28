@@ -1,74 +1,45 @@
 package com.pollenrobotics.gstreamer;
-import com.unity3d.player.UnityPlayerActivity;
+
+import android.opengl.GLES20;
 import android.os.Bundle;
-import android.util.Log;
-import org.freedesktop.gstreamer.GStreamer;
-import android.system.Os;
 import android.system.ErrnoException;
+import android.system.Os;
+import android.util.Log;
 import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.widget.FrameLayout;
+import com.unity3d.player.UnityPlayerActivity;
+import org.freedesktop.gstreamer.GStreamer;
 
 public class GstreamerActivity extends UnityPlayerActivity {
 
-    public interface OnInitializedListener{
-        void onInitialized(int textureId);
-    }
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-  private static UnityRenderTexture renderTextureLeft;
-  private static UnityRenderTexture renderTextureRight;
+        Log.d("GstreamerActivity", "onCreate called!");
 
-  protected void onCreate(Bundle savedInstanceState) {    
-    super.onCreate(savedInstanceState);
-    
-    Log.d("GstreamerActivity", "onCreate called!");
-    
-    try{
-        Os.setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer.log", true);
-        Os.setenv("GST_DEBUG_NO_COLOR", "1", true);
-        Os.setenv("GST_DEBUG", "4", true);
-    }
-    catch (ErrnoException ex)
-    {
-        Log.d("OverrideActivity", "ErrnoException caught: " + ex.getMessage());
-    }
-
-    System.loadLibrary("gstreamer_android");
-    try {
-          GStreamer.init(this);
-    } catch (Exception e) {
-          e.printStackTrace();
-    }
-
-  }
-
-  public static void InitExternalTexture(int width, int height, OnInitializedListener listenerLeft, OnInitializedListener listenerRight){
-        renderTextureLeft = new UnityRenderTexture(width, height, surface->{
-            listenerLeft.onInitialized(renderTextureLeft.getId());
-        });
-        renderTextureRight = new UnityRenderTexture(width, height, surface->{
-            listenerRight.onInitialized(renderTextureRight.getId());
-        });
-  }
-
-  public static Surface GetSurface(boolean left)
-  {
-    if(left)
-        return renderTextureLeft.GetSurface();
-    else
-        return renderTextureRight.GetSurface();
-  }
-
-  public static void CleanSurfaces()
-  {
-        if(renderTextureLeft != null)
-        {
-            renderTextureLeft.release();
-            renderTextureLeft = null;
+        try {
+            Os.setenv(
+                "GST_DEBUG_FILE",
+                "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer.log",
+                //"/sdcard/Android/data/com.DefaultCompany.UnityProject/files/gstreamer/gstreamer.log",
+                true
+            );
+            Os.setenv("GST_DEBUG_NO_COLOR", "1", true);
+            Os.setenv("GST_DEBUG", "4", true);
+        } catch (ErrnoException ex) {
+            Log.d(
+                "OverrideActivity",
+                "ErrnoException caught: " + ex.getMessage()
+            );
         }
-        if(renderTextureRight != null)
-        {
-            renderTextureRight.release();
-            renderTextureRight = null;
+        System.loadLibrary("gstreamer_android");
+        try {
+            GStreamer.init(this);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-  }
 
+    }
 }
