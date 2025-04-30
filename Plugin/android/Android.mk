@@ -9,7 +9,7 @@ LOCAL_MODULE    := UnityGStreamerPlugin
 LOCAL_SRC_FILES := ../src/DebugLog.cpp ../src/RenderingPlugin.cpp ../src/GstDataPipeline.cpp ../src/GstBasePipeline.cpp ../src/GstAVPipeline.cpp ../src/GstAVPipelineOpenGLES.cpp ../src/GstMicPipeline.cpp
 
 LOCAL_SHARED_LIBRARIES := gstreamer_android
-LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv2
+LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv3
 include $(BUILD_SHARED_LIBRARY)
 
 ifndef GSTREAMER_ROOT_ANDROID
@@ -34,6 +34,7 @@ GSTREAMER_NDK_BUILD_PATH  := $(GSTREAMER_ROOT)/share/gst-android/ndk-build/
 
 include $(GSTREAMER_NDK_BUILD_PATH)/plugins.mk
 
+
 GSTREAMER_PLUGINS_CORE_CUSTOM := coreelements app audioconvert audiorate audioresample videorate videoconvertscale autodetect
 GSTREAMER_PLUGINS_CODECS_CUSTOM := videoparsersbad vpx opus audioparsers opusparse androidmedia
 GSTREAMER_PLUGINS_NET_CUSTOM := tcp rtsp rtp rtpmanager udp srtp webrtc dtls nice rswebrtc rsrtp sctp
@@ -45,7 +46,7 @@ GSTREAMER_PLUGINS         := $(GSTREAMER_PLUGINS_CORE_CUSTOM) $(GSTREAMER_PLUGIN
                              $(GSTREAMER_PLUGINS_PLAYBACK) \
                              $(GSTREAMER_PLUGINS_EFFECTS_CUSTOM)
 
-GSTREAMER_EXTRA_DEPS      := gstreamer-video-1.0 glib-2.0 gstreamer-sdp-1.0 gstreamer-webrtc-nice-1.0 gstreamer-app-1.0
+GSTREAMER_EXTRA_DEPS      := gstreamer-video-1.0 glib-2.0 gstreamer-sdp-1.0 gstreamer-webrtc-nice-1.0 gstreamer-app-1.0 gstreamer-gl-1.0
 
 G_IO_MODULES = openssl
 

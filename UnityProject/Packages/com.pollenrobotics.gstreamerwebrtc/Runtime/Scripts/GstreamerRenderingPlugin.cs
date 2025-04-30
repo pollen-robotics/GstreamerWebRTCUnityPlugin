@@ -20,16 +20,17 @@ namespace GstreamerWebRTC
         [DllImport("UnityGStreamerPlugin")]
         private static extern void CreateDevice();
 
-#if UNITY_ANDROID
-        [DllImport("UnityGStreamerPlugin")]
-        private static extern void SetSurface(IntPtr surface, bool left);
-#endif
-
         [DllImport("UnityGStreamerPlugin")]
         private static extern void DestroyPipeline();
 
         [DllImport("UnityGStreamerPlugin")]
         private static extern IntPtr CreateTexture(uint width, uint height, bool left);
+
+
+#if UNITY_ANDROID
+        [DllImport("UnityGStreamerPlugin")]
+        private static extern void SetTextureFromUnity(IntPtr texture, bool left);
+#endif
 
         [DllImport("UnityGStreamerPlugin")]
         private static extern void ReleaseTexture(IntPtr texture);
@@ -58,9 +59,9 @@ namespace GstreamerWebRTC
 
         CommandBuffer _command = null;
 
-        private bool _started = false;
-
         private bool _autoreconnect = false;
+
+
 
 #if UNITY_ANDROID
 
@@ -82,7 +83,6 @@ namespace GstreamerWebRTC
 
         public GStreamerRenderingPlugin(string ip_address, ref Texture leftTexture, ref Texture rightTexture)
         {
-            _started = false;
             _autoreconnect = true;
             _signallingServerURL = "ws://" + ip_address + ":8443";
 
@@ -97,25 +97,7 @@ namespace GstreamerWebRTC
 
 #if UNITY_ANDROID
             CheckMicPermission();
-            
-            _command.IssuePluginEvent(GetRenderEventFunc(), 1);
-            Camera.main.AddCommandBuffer(CameraEvent.BeforeSkybox, _command);
 
-            new AndroidJavaClass("com.pollenrobotics.gstreamer.GstreamerActivity")
-                .CallStatic(
-                "InitExternalTexture",
-                (int)width,
-                (int)height,
-                new PluginCallback(texId =>
-                {
-                    leftTextureNativePtr = (IntPtr)texId;
-                }),
-                new PluginCallback(texId =>
-                {
-                    rightTextureNativePtr = (IntPtr)texId;
-                    nativeTexPtrSet = true;
-                })
-            );
 #elif (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN)
             CreateDevice();
             leftTexture = CreateRenderTexture(true, ref leftTextureNativePtr);
@@ -144,16 +126,12 @@ namespace GstreamerWebRTC
 
         public Texture SetTextures(bool left)
         {
-            AndroidJavaObject surface = new AndroidJavaClass("com.pollenrobotics.gstreamer.GstreamerActivity")
-                .CallStatic<AndroidJavaObject>("GetSurface", left);
-
-            SetSurface(surface.GetRawObject(), left);
-
             if (left)
                 return CreateRenderTexture(left, ref leftTextureNativePtr);
             else
                 return CreateRenderTexture(left, ref rightTextureNativePtr);
         }
+
 #endif
 
         public void Connect()
@@ -165,11 +143,10 @@ namespace GstreamerWebRTC
         {
 #if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN)
             textureNativePtr = CreateTexture(width, height, left);
-#endif
 
             if (textureNativePtr != IntPtr.Zero)
             {
-                Debug.Log("Texture is set " + left);
+                Debug.Log("Texture is set " + left + " " + textureNativePtr);
                 return Texture2D.CreateExternalTexture((int)width, (int)height, TextureFormat.RGBA32, mipChain: false, linear: true, textureNativePtr);
             }
             else
@@ -177,6 +154,16 @@ namespace GstreamerWebRTC
                 Debug.LogError("Texture is null " + left);
                 return null;
             }
+#elif UNITY_ANDROID
+            Debug.Log("CreateRenderTexture " + left);
+            Texture2D tex = new Texture2D((int)width, (int)height, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            tex.Apply();
+            textureNativePtr = tex.GetNativeTexturePtr();
+            SetTextureFromUnity(textureNativePtr, left);
+            Debug.Log("Texture is set " + left + " " + textureNativePtr);
+            return tex;
+#endif
         }
 
         void StartPipeline(string remote_peer_id)
@@ -184,12 +171,12 @@ namespace GstreamerWebRTC
             Debug.Log("start rendering pipe " + remote_peer_id);
             CreatePipeline(_signallingServerURL, remote_peer_id);
             event_OnPipelineStarted.Invoke();
-            _started = true;
         }
+
+
 
         void StopPipeline()
         {
-            _started = false;
             DestroyPipeline();
             event_OnPipelineStopped.Invoke();
             if (_autoreconnect)
@@ -205,11 +192,6 @@ namespace GstreamerWebRTC
             _signalling.RequestStop();
 
             StopPipeline();
-
-#if UNITY_ANDROID
-            new AndroidJavaClass("com.pollenrobotics.gstreamer.GstreamerActivity")
-                .CallStatic<AndroidJavaObject>("CleanSurfaces");
-#endif
 
             if (leftTextureNativePtr != IntPtr.Zero)
             {
@@ -234,7 +216,42 @@ namespace GstreamerWebRTC
                 _command.IssuePluginEvent(GetRenderEventFunc(), 1);
                 Graphics.ExecuteCommandBuffer(_command);
             }
+#elif UNITY_ANDROID
+            if (!nativeTexPtrSet)
+            {
+                _command.Clear();
+                _command.IssuePluginEvent(GetRenderEventFunc(), 0);
+                Graphics.ExecuteCommandBuffer(_command);
+                nativeTexPtrSet = true;
+                Debug.Log("Android texture created");
+            }
+            else
+            {
+                //GL.InvalidateState();
+                _command.Clear();
+                _command.IssuePluginEvent(GetRenderEventFunc(), 1);
+                Graphics.ExecuteCommandBuffer(_command);
+
+            }/*
+            if (init_android == 2)
+            {
+                _command.Clear();
+                _command.IssuePluginEvent(GetRenderEventFunc(), 0);
+                Graphics.ExecuteCommandBuffer(_command);
+                nativeTexPtrSet = true;
+                Debug.Log("Android texture created");
+                init_android++;
+            }
+            if (nativeTexPtrSet)
+            {
+                //GL.InvalidateState();
+                _command.Clear();
+                _command.IssuePluginEvent(GetRenderEventFunc(), 1);
+                Graphics.ExecuteCommandBuffer(_command);
+
+            }*/
 #endif
+
         }
 
     }

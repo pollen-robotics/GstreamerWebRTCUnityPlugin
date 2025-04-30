@@ -10,6 +10,7 @@ using System.Collections;
 using System;
 using UnityEngine.Rendering;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace GstreamerWebRTC
 {
@@ -19,6 +20,8 @@ namespace GstreamerWebRTC
         public RawImage leftRawImage;
         [Tooltip("RawImage on which the right texture will be rendered")]
         public RawImage rightRawImage;
+
+
         protected GStreamerRenderingPlugin renderingPlugin = null;
 
         protected GStreamerDataPlugin dataPlugin = null;
@@ -48,6 +51,11 @@ namespace GstreamerWebRTC
 
         void Start()
         {
+
+            var path = Application.persistentDataPath + "/fake_log.log";
+            Debug.Log("Log file path: " + path);
+            File.WriteAllText(path, "test");
+
             if (cleaning_thread != null)
             {
                 cleaning_thread.Join();
@@ -62,8 +70,8 @@ namespace GstreamerWebRTC
             //GStreamerRenderingPlugin has to run in main thread
             InitAV();
 
-            init_thread = new Thread(InitData);
-            init_thread.Start();
+            //init_thread = new Thread(InitData);
+            //init_thread.Start();
         }
 
         protected virtual void InitAV()
@@ -84,15 +92,16 @@ namespace GstreamerWebRTC
             renderingPlugin.event_OnPipelineStarted.AddListener(PipelineStarted);
             renderingPlugin.event_OnPipelineStopped.AddListener(PipelineStopped);
             renderingPlugin.Connect();
-#endif            
+#endif
         }
 
 #if UNITY_ANDROID
         private IEnumerator WaitForNativePointer(GStreamerRenderingPlugin renderingPlugin)
         {
-            yield return new WaitUntil(()=>renderingPlugin.IsNativePtrSet());
+            //yield return new WaitUntil(() => renderingPlugin.IsNativePtrSet());
             leftRawImage.texture = renderingPlugin.SetTextures(true);
             rightRawImage.texture = renderingPlugin.SetTextures(false);
+            yield return new WaitForEndOfFrame();
             renderingPlugin.event_OnPipelineStarted.AddListener(PipelineStarted);
             renderingPlugin.event_OnPipelineStopped.AddListener(PipelineStopped);
             renderingPlugin.Connect();
