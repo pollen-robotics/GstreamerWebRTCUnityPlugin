@@ -1,9 +1,11 @@
+/* Copyright(c) Pollen Robotics, all rights reserved.
+ This source code is licensed under the license found in the
+ LICENSE file in the root directory of this source tree. */
+
 #include "GstAVPipelineOpenGLES.h"
 #include "DebugLog.h"
 #include <EGL/egl.h>
 #include <gst/gl/egl/gstgldisplay_egl.h>
-
-#include <string>
 
 void GstAVPipelineOpenGLES::SetUnityContext()
 {
@@ -22,14 +24,17 @@ void GstAVPipelineOpenGLES::SetUnityContext()
     Debug::Log("Set Unity context wrapper");
 
     GstGLDisplay* gl_display = (GstGLDisplay*)gst_gl_display_egl_new_with_egl_display(unityDisplay);
-    gl_context_unity = gst_gl_context_new_wrapped(gl_display, (guintptr)unityContext, GST_GL_PLATFORM_EGL, GST_GL_API_GLES2);
-    gst_gl_context_activate(gl_context_unity, true);
+    _gl_context_unity = gst_gl_context_new_wrapped(gl_display, (guintptr)unityContext, GST_GL_PLATFORM_EGL, GST_GL_API_GLES2);
+    gst_gl_context_activate(_gl_context_unity, true);
 }
 
-void GstAVPipelineOpenGLES::SetTextureFromUnity(GLuint texPtr, bool left)
+void GstAVPipelineOpenGLES::SetTextureFromUnity(GLuint texPtr, bool left, int width, int height)
 {
     std::unique_ptr<AppData> data = std::make_unique<AppData>();
     data->textureID = texPtr;
+
+    _width = width;
+    _height = height;
 
     if (left)
         _leftData = std::move(data);
@@ -37,7 +42,7 @@ void GstAVPipelineOpenGLES::SetTextureFromUnity(GLuint texPtr, bool left)
         _rightData = std::move(data);
 }
 
-void GstAVPipelineOpenGLES::Draw(JNIEnv* env, bool left)
+void GstAVPipelineOpenGLES::Draw(bool left)
 {
     AppData* data;
     if (left)
@@ -179,7 +184,7 @@ GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline)
     }
 
     GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D");
-    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, /*"processing-deadline", 0,*/ nullptr);
+    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, /*"processing-deadline", 20000000,*/ nullptr);
     gst_caps_unref(caps);
 
     gst_bin_add(GST_BIN(pipeline), appsink);
@@ -270,7 +275,7 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
         GstElement* audioconvert = add_by_name(avpipeline->pipeline_, "audioconvert");
         GstElement* audioresample = add_by_name(avpipeline->pipeline_, "audioresample");
         GstElement* autoaudiosink = add_by_name(avpipeline->pipeline_, "openslessink");
-        g_object_set(autoaudiosink, "processing-deadline", 0, nullptr);
+        g_object_set(autoaudiosink, "buffer-time", 10000, /*"processing-deadline", 10000000,*/ nullptr);
 
         if (!gst_element_link_many(queue, rtpopusdepay, opusdec, audioconvert, audioresample, autoaudiosink, nullptr))
         {
@@ -319,7 +324,7 @@ GstBusSyncReply GstAVPipelineOpenGLES::busSyncHandler(GstBus* bus, GstMessage* m
 
             if (g_strcmp0(context_type, "gst.gl.app_context") == 0)
             {
-                GstGLContext* gl_context = self->gl_context_unity;
+                GstGLContext* gl_context = self->_gl_context_unity;
                 GstStructure* s;
 
                 context = gst_context_new("gst.gl.app_context", TRUE);

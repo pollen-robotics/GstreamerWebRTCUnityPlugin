@@ -20,14 +20,14 @@ public class GstreamerActivity extends UnityPlayerActivity {
         Log.d("GstreamerActivity", "onCreate called!");
 
         try {
-            Os.setenv(
+            /*Os.setenv(
                 "GST_DEBUG_FILE",
                 "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer.log",
                 //"/sdcard/Android/data/com.DefaultCompany.UnityProject/files/gstreamer/gstreamer.log",
                 true
-            );
+            );*/
             Os.setenv("GST_DEBUG_NO_COLOR", "1", true);
-            Os.setenv("GST_DEBUG", "4", true);
+            Os.setenv("GST_DEBUG", "3", true);
         } catch (ErrnoException ex) {
             Log.d(
                 "OverrideActivity",

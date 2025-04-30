@@ -35,7 +35,7 @@ private:
 public:
     GstAVPipelineD3D11(IUnityInterfaces* s_UnityInterfaces);
 
-    void Draw(bool left);
+    void Draw(bool left) override;
 
     void CreateDevice();
     void DestroyPipeline() override;

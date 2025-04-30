@@ -15,22 +15,12 @@ static std::unique_ptr<GstAVPipelineD3D11> gstAVPipeline = nullptr;
 
 #elif UNITY_ANDROID
 #include "GstAVPipelineOpenGLES.h"
-#include <jni.h>
+
 static std::unique_ptr<GstAVPipelineOpenGLES> gstAVPipeline = nullptr;
-static JavaVM* ms2_vm = nullptr;
-static void* g_TextureHandle_left = nullptr;
-static void* g_TextureHandle_right = nullptr;
 
-jint JNI_OnLoad(JavaVM* vm, void* reserved)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTextureFromUnity(void* texPtr, bool left, int width, int height)
 {
-    // vm->AttachCurrentThread(&jni_env, 0);
-    ms2_vm = vm;
-    return JNI_VERSION_1_6;
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTextureFromUnity(void* texPtr, bool left)
-{
-    gstAVPipeline->SetTextureFromUnity((GLuint)(size_t)(texPtr), left);
+    gstAVPipeline->SetTextureFromUnity((GLuint)(size_t)(texPtr), left, width, height);
 }
 
 #endif
@@ -132,39 +122,16 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
 
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
-#if UNITY_WIN
     if (eventID == 1)
     {
         gstAVPipeline->Draw(true);
         gstAVPipeline->Draw(false);
     }
-#elif UNITY_ANDROID
+#if UNITY_ANDROID
 
-    int status;
-    JNIEnv* env;
-    // int isAttached = 0;
-
-    if ((status = ms2_vm->GetEnv((void**)&env, JNI_VERSION_1_6)) < 0)
+    else if (eventID == 0)
     {
-        if ((status = ms2_vm->AttachCurrentThread(&env, NULL)) < 0)
-        {
-            return;
-        }
-        // isAttached = 1;
-    }
-
-    if (eventID == 0)
-    {
-        /*int height = 720;
-        int width = 960;
-        gstAVPipeline->CreateTextureAndSurfaces(env, width, height, true);
-        gstAVPipeline->CreateTextureAndSurfaces(env, width, height, false);*/
         gstAVPipeline->SetUnityContext();
-    }
-    else if (eventID == 1)
-    {
-        gstAVPipeline->Draw(env, true);
-        gstAVPipeline->Draw(env, false);
     }
 
 #endif

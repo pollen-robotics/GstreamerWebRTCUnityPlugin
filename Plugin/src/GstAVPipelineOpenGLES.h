@@ -1,9 +1,12 @@
+/* Copyright(c) Pollen Robotics, all rights reserved.
+ This source code is licensed under the license found in the
+ LICENSE file in the root directory of this source tree. */
+
 #pragma once
 #include "GstAVPipeline.h"
 #include <GLES3/gl3.h>
 #include <gst/app/app.h>
 #include <gst/gl/gl.h>
-#include <jni.h>
 #include <mutex>
 
 class GstAVPipelineOpenGLES : public GstAVPipeline
@@ -12,13 +15,15 @@ class GstAVPipelineOpenGLES : public GstAVPipeline
 public:
     GstAVPipelineOpenGLES(IUnityInterfaces* s_UnityInterfaces);
     void* CreateTexture(bool left);
-    void Draw(JNIEnv* env, bool left);
+    void Draw(bool left) override;
     void ReleaseTexture(void* texture) override;
-    void SetTextureFromUnity(GLuint texPtr, bool left);
+    void SetTextureFromUnity(GLuint texPtr, bool left, int width, int height);
     void SetUnityContext();
 
 private:
-    GstGLContext* gl_context_unity = nullptr;
+    GstGLContext* _gl_context_unity = nullptr;
+    int _width = 0;
+    int _height = 0;
 
     struct AppData
     {

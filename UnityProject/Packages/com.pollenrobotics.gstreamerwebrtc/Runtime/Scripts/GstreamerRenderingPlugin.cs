@@ -29,7 +29,7 @@ namespace GstreamerWebRTC
 
 #if UNITY_ANDROID
         [DllImport("UnityGStreamerPlugin")]
-        private static extern void SetTextureFromUnity(IntPtr texture, bool left);
+        private static extern void SetTextureFromUnity(IntPtr texture, bool left, int width, int height);
 #endif
 
         [DllImport("UnityGStreamerPlugin")]
@@ -38,8 +38,6 @@ namespace GstreamerWebRTC
         [DllImport("UnityGStreamerPlugin")]
         private static extern IntPtr GetRenderEventFunc();
 
-        [DllImport("UnityGStreamerPlugin")]
-        private static extern IntPtr GetTextureUpdateCallback();
 
         private IntPtr leftTextureNativePtr;
 
@@ -160,7 +158,7 @@ namespace GstreamerWebRTC
             tex.filterMode = FilterMode.Point;
             tex.Apply();
             textureNativePtr = tex.GetNativeTexturePtr();
-            SetTextureFromUnity(textureNativePtr, left);
+            SetTextureFromUnity(textureNativePtr, left, (int)width, (int)height);
             Debug.Log("Texture is set " + left + " " + textureNativePtr);
             return tex;
 #endif
@@ -227,29 +225,11 @@ namespace GstreamerWebRTC
             }
             else
             {
-                //GL.InvalidateState();
                 _command.Clear();
                 _command.IssuePluginEvent(GetRenderEventFunc(), 1);
                 Graphics.ExecuteCommandBuffer(_command);
 
-            }/*
-            if (init_android == 2)
-            {
-                _command.Clear();
-                _command.IssuePluginEvent(GetRenderEventFunc(), 0);
-                Graphics.ExecuteCommandBuffer(_command);
-                nativeTexPtrSet = true;
-                Debug.Log("Android texture created");
-                init_android++;
             }
-            if (nativeTexPtrSet)
-            {
-                //GL.InvalidateState();
-                _command.Clear();
-                _command.IssuePluginEvent(GetRenderEventFunc(), 1);
-                Graphics.ExecuteCommandBuffer(_command);
-
-            }*/
 #endif
 
         }

@@ -98,10 +98,9 @@ namespace GstreamerWebRTC
 #if UNITY_ANDROID
         private IEnumerator WaitForNativePointer(GStreamerRenderingPlugin renderingPlugin)
         {
-            //yield return new WaitUntil(() => renderingPlugin.IsNativePtrSet());
             leftRawImage.texture = renderingPlugin.SetTextures(true);
             rightRawImage.texture = renderingPlugin.SetTextures(false);
-            yield return new WaitForEndOfFrame();
+            yield return new WaitUntil(() => renderingPlugin.IsNativePtrSet());
             renderingPlugin.event_OnPipelineStarted.AddListener(PipelineStarted);
             renderingPlugin.event_OnPipelineStopped.AddListener(PipelineStopped);
             renderingPlugin.Connect();
