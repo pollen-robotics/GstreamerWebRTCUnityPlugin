@@ -26,6 +26,11 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
     return JNI_VERSION_1_6;
 }
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTextureFromUnity(void* texPtr, bool left)
+{
+    gstAVPipeline->SetTextureFromUnity((GLuint)(size_t)(texPtr), left);
+}
+
 #endif
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
@@ -111,8 +116,9 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
     {
         int height = 720;
         int width = 960;
-        gstAVPipeline->CreateTextureAndSurfaces(env, width, height, true);
-        gstAVPipeline->CreateTextureAndSurfaces(env, width, height, false);
+        // gstAVPipeline->CreateTextureAndSurfaces(env, width, height, true);
+        // gstAVPipeline->CreateTextureAndSurfaces(env, width, height, false);
+        gstAVPipeline->SetUnityContext();
     }
     else if (eventID == 1)
     {

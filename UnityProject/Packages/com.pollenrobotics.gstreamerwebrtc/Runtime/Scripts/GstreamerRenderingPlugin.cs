@@ -27,7 +27,8 @@ namespace GstreamerWebRTC
         [DllImport("UnityGStreamerPlugin")]
         private static extern IntPtr CreateTexture(uint width, uint height, bool left);
 
-
+        [DllImport("UnityGStreamerPlugin")]
+        private static extern void SetTextureFromUnity(IntPtr texture, bool left);
 
         [DllImport("UnityGStreamerPlugin")]
         private static extern void ReleaseTexture(IntPtr texture);
@@ -125,6 +126,7 @@ namespace GstreamerWebRTC
 
         Texture CreateRenderTexture(bool left, ref IntPtr textureNativePtr)
         {
+#if (UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN)
             textureNativePtr = CreateTexture(width, height, left);
 
             if (textureNativePtr != IntPtr.Zero)
@@ -137,6 +139,23 @@ namespace GstreamerWebRTC
                 Debug.LogError("Texture is null " + left);
                 return null;
             }
+
+#elif UNITY_ANDROID
+            Debug.Log("CreateRenderTexture " + left);
+            // Create a new texture
+            Texture2D tex = new Texture2D((int)width, (int)height, TextureFormat.RGBA32, false);
+            // Set point filtering just so we can see the pixels clearly
+            tex.filterMode = FilterMode.Point;
+            // Call Apply() so it's actually uploaded to the GPU
+            tex.Apply();
+            textureNativePtr = tex.GetNativeTexturePtr();
+            Debug.Log("pass texture");
+            //CreateTextureAndroid(textureNativePtr, left);
+            SetTextureFromUnity(textureNativePtr, left);
+            Debug.Log("Texture is set " + left + " " + textureNativePtr);
+            return tex;
+#endif
+
         }
 
         public void StartPipeline()

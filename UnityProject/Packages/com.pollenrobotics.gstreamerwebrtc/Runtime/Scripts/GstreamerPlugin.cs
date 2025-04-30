@@ -55,8 +55,6 @@ namespace GstreamerWebRTC
                 cleaning_thread.Join();
             }
 
-
-
             //GStreamerRenderingPlugin has to run in main thread
             InitAV();
         }
@@ -85,9 +83,11 @@ namespace GstreamerWebRTC
 #if UNITY_ANDROID
         private IEnumerator WaitForNativePointer(GStreamerRenderingPlugin renderingPlugin)
         {
-            yield return new WaitUntil(() => renderingPlugin.IsNativePtrSet());
+            //yield return new WaitUntil(() => renderingPlugin.IsNativePtrSet());
             leftRawImage.texture = renderingPlugin.SetTextures(true);
             rightRawImage.texture = renderingPlugin.SetTextures(false);
+            //yield return null;
+            yield return new WaitForEndOfFrame();
             //leftRawImage.material.SetTexture("_MainTex", renderingPlugin.SetTextures(true));
             //rightRawImage.material.SetTexture("_RightTex", renderingPlugin.SetTextures(false));
             renderingPlugin.event_OnPipelineStarted.AddListener(PipelineStarted);

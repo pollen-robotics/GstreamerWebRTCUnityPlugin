@@ -39,19 +39,8 @@ void CheckOpenGLError(const std::string& function)
     }
 }
 
-void GstAVPipelineOpenGLES::CreateTextureAndSurfaces(JNIEnv* env, int width, int height, bool left)
+void GstAVPipelineOpenGLES::SetUnityContext()
 {
-    std::unique_ptr<AppData> data = std::make_unique<AppData>();
-
-    GLuint renderTextureId;
-
-    // Generate texture
-    glGenTextures(1, &renderTextureId);
-
-    CheckOpenGLError("glBindTexture");
-
-    // Bind current EGL context and surfaces
-
     EGLContext unityContext = eglGetCurrentContext();
     EGLDisplay unityDisplay = eglGetCurrentDisplay();
     EGLSurface unityDrawSurface = eglGetCurrentSurface(EGL_DRAW);
@@ -62,151 +51,161 @@ void GstAVPipelineOpenGLES::CreateTextureAndSurfaces(JNIEnv* env, int width, int
         Debug::Log("UnityEGLContext is invalid", Level::Error);
     }
 
-    // eglMakeCurrent(unityDisplay, unityDrawSurface, unityReadSurface, unityContext);
+    eglMakeCurrent(unityDisplay, unityDrawSurface, unityReadSurface, unityContext);
 
-    data->gl_display = gst_gl_display_egl_new_with_egl_display(unityDisplay);
-    GstGLDisplay* display = gst_gl_display_new_with_type(GST_GL_DISPLAY_TYPE_EGL);
-    data->gl_context =
-        gst_gl_context_new_wrapped(&data->gl_display->parent, (guintptr)unityContext, GST_GL_PLATFORM_EGL, GST_GL_API_GLES2);
-    // gst_gl_context_new(display);
-    // gst_gl_context_activate(data->gl_context, true);
+    Debug::Log("Set Unity context wrapper");
 
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderTextureId);
-    // Set texture parameters
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    GstGLDisplay* gl_display = (GstGLDisplay*)gst_gl_display_egl_new_with_egl_display(unityDisplay);
+    gl_context_unity = gst_gl_context_new_wrapped(gl_display, (guintptr)unityContext, GST_GL_PLATFORM_EGL, GST_GL_API_GLES2);
+    gst_gl_context_activate(gl_context_unity, true);
+}
 
-    CheckOpenGLError("glTexParameterf");
-
-    Debug::Log("Texture created with ID: " + std::to_string(renderTextureId));
-
-    data->textureID = renderTextureId;
-
-    jclass surfaceTextureClass = env->FindClass("android/graphics/SurfaceTexture");
-    if (!surfaceTextureClass)
-    {
-        Debug::Log("Unable to find SurfaceTexture class", Level::Error);
-        return;
-    }
-
-    jmethodID surfaceTextureCtor = env->GetMethodID(surfaceTextureClass, "<init>", "(I)V");
-    if (!surfaceTextureCtor)
-    {
-        Debug::Log("Unable to find SurfaceTexture constructor", Level::Error);
-        return;
-    }
-
-    data->surfaceTexture = env->NewObject(surfaceTextureClass, surfaceTextureCtor, renderTextureId);
-    if (!data->surfaceTexture || env->ExceptionCheck())
-    {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        Debug::Log("Failed to create SurfaceTexture", Level::Error);
-        return;
-    }
-
-    _updateTexImageMethod = env->GetMethodID(surfaceTextureClass, "updateTexImage", "()V");
-    if (!_updateTexImageMethod)
-    {
-        Debug::Log("Unable to find updateTexImage method", Level::Error);
-        return;
-    }
-
-    jmethodID setDefaultBufferSizeMethod = env->GetMethodID(surfaceTextureClass, "setDefaultBufferSize", "(II)V");
-    if (!setDefaultBufferSizeMethod)
-    {
-        Debug::Log("Unable to find setDefaultBufferSize method", Level::Error);
-        return;
-    }
-
-    env->CallVoidMethod(data->surfaceTexture, setDefaultBufferSizeMethod, width, height);
-    if (env->ExceptionCheck())
-    {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        Debug::Log("Failed to set default buffer size on SurfaceTexture", Level::Error);
-        return;
-    }
-
-    jclass surfaceClass = env->FindClass("android/view/Surface");
-    if (!surfaceClass)
-    {
-        Debug::Log("Unable to find Surface class", Level::Error);
-        return;
-    }
-
-    jmethodID surfaceCtor = env->GetMethodID(surfaceClass, "<init>", "(Landroid/graphics/SurfaceTexture;)V");
-    if (!surfaceCtor)
-    {
-        Debug::Log("Unable to find Surface constructor", Level::Error);
-        return;
-    }
-
-    jobject surfaceObject = env->NewObject(surfaceClass, surfaceCtor, data->surfaceTexture);
-    if (!surfaceObject || env->ExceptionCheck())
-    {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        Debug::Log("Failed to create Surface", Level::Error);
-        return;
-    }
-
-    data->nativeWindow = SetNativeWindow(env, surfaceObject);
+void GstAVPipelineOpenGLES::SetTextureFromUnity(GLuint texPtr, bool left)
+{
+    std::unique_ptr<AppData> data = std::make_unique<AppData>();
+    data->textureID = texPtr;
 
     if (left)
         _leftData = std::move(data);
     else
         _rightData = std::move(data);
-
-    // eglMakeCurrent(unityDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    // eglMakeCurrent(unityDisplay, unityDrawSurface, unityReadSurface, unityContext);
 }
 
 void GstAVPipelineOpenGLES::Draw(JNIEnv* env, bool left)
 {
-    /*EGLDisplay unityDisplay = eglGetCurrentDisplay();
-    EGLContext unityContext = eglGetCurrentContext();
-    EGLSurface unityDrawSurface = eglGetCurrentSurface(EGL_DRAW);
-    EGLSurface unityReadSurface = eglGetCurrentSurface(EGL_READ);
-    // eglMakeCurrent(unityDisplay, unityDrawSurface, unityReadSurface, unityContext);*/
-    jobject surfaceTexture;
+    AppData* data;
     if (left)
-    {
-
-        surfaceTexture = _leftData->surfaceTexture;
-        if (surfaceTexture == nullptr)
-        {
-            Debug::Log("SurfaceTexture left is null ", Level::Error);
-            return;
-        }
-        // gst_gl_context_activate(_leftData->gl_context, true);
-    }
+        data = _leftData.get();
     else
+        data = _rightData.get();
+
+    if (data == nullptr)
     {
-        surfaceTexture = _rightData->surfaceTexture;
-        if (surfaceTexture == nullptr)
-        {
-            Debug::Log("SurfaceTexture right is null ", Level::Error);
-            return;
-        }
-        // gst_gl_context_activate(_rightData->gl_context, true);
+        Debug::Log("data is null", Level::Warning);
+        return;
     }
 
-    // Call the updateTexImage method
-    env->CallVoidMethod(surfaceTexture, _updateTexImageMethod);
+    GstSample* sample = nullptr;
 
-    // Check for JNI exceptions
-    if (env->ExceptionCheck())
+    std::lock_guard<std::mutex> lk(data->lock);
+    if (!data->last_sample)
+        return;
+
+    sample = data->last_sample;
+    data->last_sample = nullptr;
+
+    auto buf = gst_sample_get_buffer(sample);
+    if (!buf)
     {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        Debug::Log("Exception occurred while updating the SurfaceTexture image", Level::Error);
+        Debug::Log("Sample without buffer", Level::Error);
+        gst_sample_unref(sample);
+        return;
     }
-    // eglMakeCurrent(unityDisplay, unityDrawSurface, unityReadSurface, unityContext);
-    //  eglMakeCurrent(unityDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    //   Debug::Log("Draw");
+
+    GstCaps* caps = gst_sample_get_caps(sample);
+    if (!caps)
+    {
+        gst_sample_unref(sample);
+        Debug::Log("Sample without caps", Level::Error);
+        return;
+    }
+
+    GstVideoFrame v_frame;
+    GstVideoInfo v_info;
+    guint texture = 0;
+
+    gst_video_info_from_caps(&v_info, caps);
+
+    if (!gst_video_frame_map(&v_frame, &v_info, buf, (GstMapFlags)(GST_MAP_READ | GST_MAP_GL)))
+    {
+        Debug::Log("Failed to map the video buffer", Level::Warning);
+        return;
+    }
+
+    texture = *(guint*)v_frame.data[0];
+    Debug::Log("Sample buffer received in Draw " + std::to_string(texture));
+    copyGStreamerTextureToFramebuffer(texture, data->textureID, 960, 720);
+    // fillTextureWithColor(data->textureID, 960, 720, 0, 255, 0, 255);
+
+    gst_video_frame_unmap(&v_frame);
+    gst_sample_unref(sample);
+}
+
+void GstAVPipelineOpenGLES::copyGStreamerTextureToFramebuffer(GLuint srcTexture, GLuint dstTexture, int width, int height)
+{
+    GLuint fboRead = 0;
+    GLuint fboDraw = 0;
+
+    glGenFramebuffers(1, &fboRead);
+    glGenFramebuffers(1, &fboDraw);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fboRead);
+    /*GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+        Debug::Log("Src FBO incomplete: 0x" + std::to_string(status), Level::Error);*/
+
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, srcTexture, 0);
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboDraw);
+    /*status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+        Debug::Log("Dest FBO incomplete: 0x" + std::to_string(status), Level::Error);*/
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dstTexture, 0);
+
+    /*status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+        Debug::Log("FBO incomplete: 0x" + std::to_string(status), Level::Error);*/
+
+    glBlitFramebuffer(0, 0, width, height, // Source area
+                      0, 0, width, height, // Dest area
+                      GL_COLOR_BUFFER_BIT, // buffer à blitter
+                      GL_NEAREST           // interpolation
+    );
+
+    // Clean up
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &fboRead);
+    glDeleteFramebuffers(1, &fboDraw);
+}
+
+void GstAVPipelineOpenGLES::fillTextureWithColor(GLuint textureID, GLsizei width, GLsizei height, GLubyte r, GLubyte g,
+                                                 GLubyte b, GLubyte a)
+{
+    // Step 1: Bind the texture
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Step 2: Create a solid color pattern (e.g., blue color)
+    std::vector<GLubyte> colorData(width * height * 4, 0); // 4 bytes per pixel (RGBA)
+    for (size_t i = 0; i < colorData.size(); i += 4)
+    {
+        colorData[i] = r;     // Red
+        colorData[i + 1] = g; // Green
+        colorData[i + 2] = b; // Blue
+        colorData[i + 3] = a; // Alpha
+    }
+
+    // Step 3: Update texture data
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorData.data());
+    glTexSubImage2D(GL_TEXTURE_2D,    // target
+                    0,                // level
+                    0, 0,             // xoffset, yoffset
+                    width, height,    // width, height
+                    GL_RGBA,          // format
+                    GL_UNSIGNED_BYTE, // type
+                    colorData.data()  // pixels
+    );
+
+    // Step 4: Unbind texture
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Check for OpenGL errors
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        Debug::Log("Error while filling texture with color: " + std::to_string(error), Level::Error);
+    }
+    Debug::Log("Texture filled with color: " + std::to_string(textureID));
 }
 
 void* GstAVPipelineOpenGLES::CreateTexture(bool left)
@@ -223,69 +222,6 @@ void* GstAVPipelineOpenGLES::CreateTexture(bool left)
     }
 }
 
-// GLuint GstAVPipelineOpenGLES::CreateTexture(bool left) { return left ? _textureIDLeft : _textureIDRight; }
-
-bool isSurfaceValid(JNIEnv* env, jobject surface)
-{
-    if (surface == nullptr)
-        return false;
-    Debug::Log("Check surface 1");
-    jclass surfaceClass = env->GetObjectClass(surface);
-    if (surfaceClass == nullptr)
-    {
-        Debug::Log("Failed to get Surface class");
-        return false;
-    }
-
-    jclass classClass = env->FindClass("java/lang/Class");
-    jmethodID getNameMethod = env->GetMethodID(classClass, "getName", "()Ljava/lang/String;");
-    jstring className = (jstring)env->CallObjectMethod(surfaceClass, getNameMethod);
-    const char* classNameChars = env->GetStringUTFChars(className, nullptr);
-    Debug::Log("Surface class name: " + std::string(classNameChars));
-    env->ReleaseStringUTFChars(className, classNameChars);
-
-    Debug::Log("Check surface 2");
-    jmethodID isValidMethod = env->GetMethodID(surfaceClass, "isValid", "()Z");
-    if (isValidMethod == nullptr)
-    {
-        Debug::Log("isValid method not found");
-        return false;
-    }
-    Debug::Log("Check surface 3");
-    jboolean isValid = env->CallBooleanMethod(surface, isValidMethod);
-    return isValid;
-}
-
-ANativeWindow* GstAVPipelineOpenGLES::SetNativeWindow(JNIEnv* env, jobject surface)
-{
-    Debug::Log("Set Native Window ");
-    if (!isSurfaceValid(env, surface))
-    {
-        Debug::Log("Surface is not valid", Level::Error);
-        return nullptr;
-    }
-    Debug::Log("Surface is valid. Getting window");
-    ANativeWindow* nativeWindow = ANativeWindow_fromSurface(env, surface);
-    if (nativeWindow == nullptr)
-    {
-        // ANativeWindow_fromSurface() failed
-        if (env->ExceptionCheck())
-        {
-            // An exception was thrown by ANativeWindow_fromSurface()
-            env->ExceptionDescribe();
-            env->ExceptionClear();
-            Debug::Log("ANativeWindow_fromSurface() failed with exception", Level::Error);
-        }
-        else
-        {
-            // ANativeWindow_fromSurface() failed for some other reason
-            Debug::Log("ANativeWindow_fromSurface() failed", Level::Error);
-        }
-        return nullptr;
-    }
-
-    return nativeWindow;
-}
 // to do proper release of the _surface_left / java method
 void GstAVPipelineOpenGLES::ReleaseTexture(void* texture)
 {
@@ -318,17 +254,7 @@ GstBusSyncReply GstAVPipelineOpenGLES::busSyncHandler(GstBus* bus, GstMessage* m
 
             if (g_strcmp0(context_type, "gst.gl.app_context") == 0)
             {
-                GstGLContext* gl_context = nullptr;
-                if (g_strcmp0(msg->src->parent->name, "glimagesink_left") == 0)
-                {
-                    Debug::Log("set left context");
-                    gl_context = self->_leftData->gl_context;
-                }
-                else if (g_strcmp0(msg->src->parent->name, "glimagesink_right") == 0)
-                {
-                    Debug::Log("set right context");
-                    gl_context = self->_rightData->gl_context;
-                }
+                GstGLContext* gl_context = self->gl_context_unity;
 
                 GstStructure* s;
 
@@ -349,68 +275,84 @@ GstBusSyncReply GstAVPipelineOpenGLES::busSyncHandler(GstBus* bus, GstMessage* m
     return GST_BUS_PASS;
 }
 
+GstFlowReturn GstAVPipelineOpenGLES::on_new_sample(GstAppSink* appsink, gpointer user_data)
+{
+    AppData* data = static_cast<AppData*>(user_data);
+    GstSample* sample = gst_app_sink_pull_sample(appsink);
+
+    if (!sample)
+        return GST_FLOW_ERROR;
+
+    GstCaps* caps = gst_sample_get_caps(sample);
+    if (!caps)
+    {
+        gst_sample_unref(sample);
+        Debug::Log("Sample without caps", Level::Error);
+        return GST_FLOW_ERROR;
+    }
+
+    std::lock_guard<std::mutex> lk(data->lock);
+
+    gst_caps_replace(&data->last_caps, caps);
+    gst_clear_sample(&data->last_sample);
+    data->last_sample = sample;
+
+    Debug::Log("Sample received in on_new_sample");
+
+    return GST_FLOW_OK;
+}
+
+GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline)
+{
+    GstElement* appsink = gst_element_factory_make("appsink", nullptr);
+    if (!appsink)
+    {
+        Debug::Log("Failed to create appsink", Level::Error);
+        return nullptr;
+    }
+
+    GstCaps* caps = gst_caps_from_string(
+        "video/x-raw(memory:GLMemory),format=RGBA,width=960,height=720,framerate=(fraction)30/1,texture-target=2D");
+    g_object_set(appsink, "caps", caps, /*"drop", true, "max-buffers", 1, "processing-deadline", 0,*/ nullptr);
+    gst_caps_unref(caps);
+
+    gst_bin_add(GST_BIN(pipeline), appsink);
+    return appsink;
+}
+
 void GstAVPipelineOpenGLES::createCustomPipeline()
 {
     Debug::Log("Create custom pipeline");
     GstElement* gltestsrc = add_by_name(pipeline_, "gltestsrc");
     g_object_set(gltestsrc, "pattern", 0, "is-live", true, nullptr);
-    GstElement* capsfilter = gst_element_factory_make("capsfilter", nullptr);
-    GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GLMemory),width=960,height=720");
-    g_object_set(capsfilter, "caps", caps, nullptr);
-    gst_bin_add(GST_BIN(pipeline_), capsfilter);
-    gst_caps_unref(caps);
 
     GstElement* queue = add_by_name(pipeline_, "queue");
 
-    GstElement* glimagesink = gst_element_factory_make("glimagesink", "glimagesink_left");
-    if (!glimagesink)
-        Debug::Log("Failed to create glimagesink_left", Level::Error);
+    GstElement* appsink = add_appsink(pipeline_);
 
-    gst_bin_add(GST_BIN(pipeline_), glimagesink);
+    GstAppSinkCallbacks callbacks = {nullptr};
+    callbacks.new_sample = on_new_sample;
 
-    if (_leftData->nativeWindow == nullptr)
-    {
-        Debug::Log("Native left window is null", Level::Error);
-    }
+    gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, _leftData.get(), nullptr);
 
-    gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(glimagesink), (guintptr)_leftData->nativeWindow);
-
-    if (!gst_element_link_many(gltestsrc, capsfilter, queue, glimagesink, nullptr))
+    if (!gst_element_link_many(gltestsrc, queue, appsink, nullptr))
     {
         Debug::Log("Elements filler could not be linked.");
     }
 
     GstElement* gltestsrc2 = add_by_name(pipeline_, "gltestsrc");
     g_object_set(gltestsrc2, "pattern", 13, "is-live", true, nullptr);
-    GstElement* capsfilter2 = gst_element_factory_make("capsfilter", nullptr);
-    GstCaps* caps2 = gst_caps_from_string("video/x-raw(memory:GLMemory),width=960,height=720");
-    g_object_set(capsfilter2, "caps", caps2, nullptr);
-    gst_bin_add(GST_BIN(pipeline_), capsfilter2);
-    gst_caps_unref(caps2);
 
     GstElement* queue2 = add_by_name(pipeline_, "queue");
 
-    GstElement* glimagesink2 = gst_element_factory_make("glimagesink", "glimagesink_right");
-    if (!glimagesink2)
-        Debug::Log("Failed to create glimagesink_right", Level::Error);
+    GstElement* appsink2 = add_appsink(pipeline_);
 
-    gst_bin_add(GST_BIN(pipeline_), glimagesink2);
+    gst_app_sink_set_callbacks(GST_APP_SINK(appsink2), &callbacks, _rightData.get(), nullptr);
 
-    if (_rightData->nativeWindow == nullptr)
-    {
-        Debug::Log("Native right window is null", Level::Error);
-    }
-
-    gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(glimagesink2), (guintptr)_rightData->nativeWindow);
-
-    if (!gst_element_link_many(gltestsrc2, capsfilter2, queue2, glimagesink2, nullptr))
+    if (!gst_element_link_many(gltestsrc2, queue2, appsink2, nullptr))
     {
         Debug::Log("Elements filler could not be linked.");
     }
-
-    gst_element_sync_state_with_parent(gltestsrc2);
-    gst_element_sync_state_with_parent(capsfilter2);
-    gst_element_sync_state_with_parent(glimagesink2);
 
     Debug::Log("End creating");
 }
