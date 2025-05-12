@@ -27,7 +27,7 @@ public class GstreamerActivity extends UnityPlayerActivity {
                 true
             );*/
             Os.setenv("GST_DEBUG_NO_COLOR", "1", true);
-            Os.setenv("GST_DEBUG", "3", true);
+            Os.setenv("GST_DEBUG", "2", true);
         } catch (ErrnoException ex) {
             Log.d(
                 "OverrideActivity",

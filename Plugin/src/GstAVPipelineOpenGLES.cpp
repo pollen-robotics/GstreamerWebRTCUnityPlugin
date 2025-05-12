@@ -184,7 +184,7 @@ GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline)
     }
 
     GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D");
-    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, /*"processing-deadline", 20000000,*/ nullptr);
+    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, "processing-deadline", (GstClockTime)1000000, nullptr);
     gst_caps_unref(caps);
 
     gst_bin_add(GST_BIN(pipeline), appsink);
@@ -275,7 +275,7 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
         GstElement* audioconvert = add_by_name(avpipeline->pipeline_, "audioconvert");
         GstElement* audioresample = add_by_name(avpipeline->pipeline_, "audioresample");
         GstElement* autoaudiosink = add_by_name(avpipeline->pipeline_, "openslessink");
-        g_object_set(autoaudiosink, "buffer-time", 10000, /*"processing-deadline", 10000000,*/ nullptr);
+        g_object_set(autoaudiosink, "buffer-time", 10000, /*"processing-deadline", (GstClockTime)1000000,*/ nullptr);
 
         if (!gst_element_link_many(queue, rtpopusdepay, opusdec, audioconvert, audioresample, autoaudiosink, nullptr))
         {

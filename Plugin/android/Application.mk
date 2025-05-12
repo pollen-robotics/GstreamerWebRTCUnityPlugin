@@ -2,7 +2,7 @@ APP_STL := c++_shared
 APP_PLATFORM := 30
 APP_ABI      := arm64-v8a
 NDK_TARGET_LEVEL := android-30
-APP_OPTIM        := debug
+APP_OPTIM        := release
 APP_BUILD_SCRIPT := Android.mk
 
 #APP_PLATFORM = 15

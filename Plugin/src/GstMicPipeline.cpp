@@ -4,7 +4,6 @@
 
 #include "GstMicPipeline.h"
 #include "DebugLog.h"
-#include "Unity/PlatformBase.h"
 
 GstMicPipeline::GstMicPipeline() : GstBasePipeline("MicPipeline") {}
 
@@ -19,7 +18,7 @@ void GstMicPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
 #if UNITY_WIN
     GstElement* audiosrc = add_wasapi2src(pipeline_);
 #elif UNITY_ANDROID
-    GstElement* audiosrc = add_by_name(pipeline_, "openslessrc");
+    GstElement* audiosrc = add_openslessrc(pipeline_);
 #endif
     GstElement* webrtcdsp = add_webrtcdsp(pipeline_);
     GstElement* audioconvert = add_by_name(pipeline_, "audioconvert");
@@ -38,6 +37,7 @@ void GstMicPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
     CreateBusThread();
 }
 
+#if UNITY_WIN
 GstElement* GstMicPipeline::add_wasapi2src(GstElement* pipeline)
 {
     GstElement* wasapi2src = gst_element_factory_make("wasapi2src", nullptr);
@@ -51,6 +51,21 @@ GstElement* GstMicPipeline::add_wasapi2src(GstElement* pipeline)
     gst_bin_add(GST_BIN(pipeline), wasapi2src);
     return wasapi2src;
 }
+#elif UNITY_ANDROID
+GstElement* GstMicPipeline::add_openslessrc(GstElement* pipeline)
+{
+    GstElement* openslessrc = gst_element_factory_make("openslessrc", nullptr);
+    if (!openslessrc)
+    {
+        Debug::Log("Failed to create openslessrc", Level::Error);
+        return nullptr;
+    }
+    g_object_set(openslessrc, "buffer-time", 20000, nullptr);
+
+    gst_bin_add(GST_BIN(pipeline), openslessrc);
+    return openslessrc;
+}
+#endif
 
 GstElement* GstMicPipeline::add_opusenc(GstElement* pipeline)
 {

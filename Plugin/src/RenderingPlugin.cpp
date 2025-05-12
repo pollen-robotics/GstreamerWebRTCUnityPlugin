@@ -94,9 +94,10 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     // const char* internalStoragePath = getenv("EXTERNAL_STORAGE");
     // td::string logFilePath = std::string(internalStoragePath) + "/gstreamer.log";
     /*setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer/gstreamer.log",
-           1);
+           1);*/
     setenv("GST_DEBUG_NO_COLOR", "1", 1);
-    setenv("GST_DEBUG", "4", 1);*/
+    setenv("GST_DEBUG", "2", 1);
+    // gst_debug_set_threshold_for_name("basesink", GST_LEVEL_DEBUG);
 
 #if UNITY_WIN
     gst_init(nullptr, nullptr);

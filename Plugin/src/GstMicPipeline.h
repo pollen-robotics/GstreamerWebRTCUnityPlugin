@@ -4,6 +4,7 @@
 
 #pragma once
 #include "GstBasePipeline.h"
+#include "Unity/PlatformBase.h"
 
 class GstMicPipeline : public GstBasePipeline
 {
@@ -15,7 +16,12 @@ public:
 
 private:
     static void consumer_added_callback(GstElement* consumer_id, gchararray webrtcbin, GstElement* arg1, gpointer udata);
+#if UNITY_WIN
     static GstElement* add_wasapi2src(GstElement* pipeline);
+#elif UNITY_ANDROID
+    static GstElement* add_openslessrc(GstElement* pipeline);
+#endif
+
     static GstElement* add_opusenc(GstElement* pipeline);
     static GstElement* add_audio_caps_capsfilter(GstElement* pipeline);
     static GstElement* add_webrtcsink(GstElement* pipeline, const std::string& uri);
