@@ -4,9 +4,18 @@ This GStreamer-based plugin enables Unity to communicate with a Reachy 2 through
 
 ## Requirements
 
-Currently, only the Windows platform is supported. The project requires [CMake](https://cmake.org/) to be generated and then Visual Studio to be built (tested with VS 2022).
+Currently, only the Windows platform is supported. 
+The GStreamer library 1.24 is required. Download the [runtime](https://gstreamer.freedesktop.org/data/pkg/windows/1.24.8/msvc/gstreamer-1.0-msvc-x86_64-1.24.8.msi) installer.
 
-The GStreamer library 1.24 is required. Download the [runtime](https://gstreamer.freedesktop.org/data/pkg/windows/1.24.8/msvc/gstreamer-1.0-msvc-x86_64-1.24.8.msi) and [development](https://gstreamer.freedesktop.org/data/pkg/windows/1.24.8/msvc/gstreamer-1.0-devel-msvc-x86_64-1.24.8.msi) installers.
+For developing, the project requires [CMake](https://cmake.org/) to be generated and then Visual Studio to be built (tested with VS 2022). The [gstreamer development installer](https://gstreamer.freedesktop.org/data/pkg/windows/1.24.8/msvc/gstreamer-1.0-devel-msvc-x86_64-1.24.8.msi) is also required.
+
+
+## Installation
+
+From the *Window/Package Manager*, hit the + button and *add package from git URL*:
+```
+https://github.com/pollen-robotics/GstreamerWebRTCUnityPlugin.git?path=/UnityProject/Packages/com.pollenrobotics.gstreamerwebrtc#main
+```
 
 ## Build
 
@@ -21,6 +30,7 @@ git clone git@github.com:pollen-robotics/GstreamerWebRTCUnityPlugin.git
 ```console
 cd GstreamerWebRTCUnityPlugin\Plugin
 mkdir build
+cd build
 cmake -G "Visual Studio 17 2022" ..
 ````
 
@@ -33,12 +43,6 @@ cmake --build . --config Release
 ```
 
 Alternatively, you can open the `*.sln` file in the build folder and build the project with Visual Studio (or press Ctrl+Shift+B).
-
-## Installation
-
-The built DLL and script files are located in the `GstreamerWebRTCUnityPlugin\UnityProject\Packages\com.pollenrobotics.gstreamerwebrtc` folder.
-
-Simply copy and paste this folder into the Packages folder of your Unity app.
 
 ## Testing
 
@@ -67,6 +71,12 @@ Figure can be generated with [graphviz](https://graphviz.org/)
 ```console
 dot -Tpng -O pipeline.dot
 ```
+
+### Debug from Visual Studio
+
+In the solution explorer, select **UnityGstreamerPlugin** as the startup project. In the *Confguration Properties/Debugging* of this project set the *Command* as *D:\UnityHub\2022.3.41f1\Editor\Unity.exe* and *Commands Arguments* as *-projectPath C:\Users\Fabien\Dev\UnityGstreamerPlugin\UnityProject* (with the right paths).
+
+Hit F5 to start the debugging. The Unity project should start.
 
 ## Android (WIP)
 
