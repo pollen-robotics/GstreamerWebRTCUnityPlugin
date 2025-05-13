@@ -60,7 +60,7 @@ GstElement* GstMicPipeline::add_openslessrc(GstElement* pipeline)
         Debug::Log("Failed to create openslessrc", Level::Error);
         return nullptr;
     }
-    g_object_set(openslessrc, "buffer-time", 20000, nullptr);
+    // g_object_set(openslessrc, "buffer-time", 40000, nullptr);
 
     gst_bin_add(GST_BIN(pipeline), openslessrc);
     return openslessrc;
