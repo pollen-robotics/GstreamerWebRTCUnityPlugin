@@ -8,8 +8,11 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/gstreamer_scene.unity
     guid: 055c9d0aeb715f44caf2ab60882077c1
+  - enabled: 0
+    path: Assets/Scenes/bench.unity
+    guid: faac5e0679fe6f1488741aef2d26f140
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: d91ce78831a6f72b3a78740d48b71092, type: 2}
-    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 04d9fe3cbe6f6e1dbaad9f68294c5ac9, type: 2}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: f35553dbf08eb8b698d296c8c3881341, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: f4e8e1905ad5f90cba1e3407f09ebbf1, type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: e182cbe4b22dc5c40ba2e8ae123bd491, type: 2}
