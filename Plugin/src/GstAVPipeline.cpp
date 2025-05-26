@@ -39,7 +39,7 @@ GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
 {
     Debug::Log("Configure webrtcbin", Level::Info);
-    g_object_set(webrtcbin, "latency", 1, nullptr);
+    g_object_set(webrtcbin, "latency", 10, nullptr);
 }
 
 GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces)

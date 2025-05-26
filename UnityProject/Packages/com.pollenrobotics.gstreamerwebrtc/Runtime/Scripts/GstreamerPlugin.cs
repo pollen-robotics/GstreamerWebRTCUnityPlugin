@@ -51,11 +51,6 @@ namespace GstreamerWebRTC
 
         void Start()
         {
-
-            var path = Application.persistentDataPath + "/fake_log.log";
-            Debug.Log("Log file path: " + path);
-            File.WriteAllText(path, "test");
-
             if (cleaning_thread != null)
             {
                 cleaning_thread.Join();
@@ -70,8 +65,8 @@ namespace GstreamerWebRTC
             //GStreamerRenderingPlugin has to run in main thread
             InitAV();
 
-            //init_thread = new Thread(InitData);
-            //init_thread.Start();
+            init_thread = new Thread(InitData);
+            init_thread.Start();
         }
 
         protected virtual void InitAV()

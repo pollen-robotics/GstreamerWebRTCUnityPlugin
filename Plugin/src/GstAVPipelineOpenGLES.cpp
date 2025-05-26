@@ -184,7 +184,7 @@ GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline)
     }
 
     GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D");
-    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, "processing-deadline", (GstClockTime)1000000, nullptr);
+    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, "processing-deadline", (GstClockTime)10000000, nullptr);
     gst_caps_unref(caps);
 
     gst_bin_add(GST_BIN(pipeline), appsink);
@@ -194,6 +194,12 @@ GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline)
 GstFlowReturn GstAVPipelineOpenGLES::on_new_sample(GstAppSink* appsink, gpointer user_data)
 {
     AppData* data = static_cast<AppData*>(user_data);
+    if (data == nullptr)
+    {
+        Debug::Log("user data is null", Level::Error);
+        return GST_FLOW_ERROR;
+    }
+
     GstSample* sample = gst_app_sink_pull_sample(appsink);
 
     if (!sample)
@@ -227,9 +233,10 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
     if (g_str_has_prefix(pad_name, "video"))
     {
         Debug::Log("Adding video pad " + std::string(pad_name));
-        // GstElement* queue = add_by_name(avpipeline->pipeline_, "queue");
         //  decoder output texture-target=external-eos. converts to exture-target=2D
         GstElement* glcolorconvert = add_by_name(avpipeline->pipeline_, "glcolorconvert");
+        GstElement* queue = add_by_name(avpipeline->pipeline_, "queue");
+        g_object_set(queue, "max-size-buffers", 1, "max-size-bytes", 0, "max-size-time", (guint64)0, NULL);
         GstElement* appsink = add_appsink(avpipeline->pipeline_);
 
         GstAppSinkCallbacks callbacks = {nullptr};
@@ -250,7 +257,7 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
             Debug::Log("Unknown video pad", Level::Warning);
         }
 
-        if (!gst_element_link_many(/*queue,*/ glcolorconvert, appsink, nullptr))
+        if (!gst_element_link_many(glcolorconvert, queue, appsink, nullptr))
         {
             Debug::Log("Elements could not be linked.");
         }
@@ -262,8 +269,8 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
         }
         gst_object_unref(sinkpad);
 
-        // gst_element_sync_state_with_parent(queue);
         gst_element_sync_state_with_parent(glcolorconvert);
+        gst_element_sync_state_with_parent(queue);
         gst_element_sync_state_with_parent(appsink);
     }
     else if (g_str_has_prefix(pad_name, "audio"))
@@ -274,10 +281,13 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
         GstElement* opusdec = add_by_name(avpipeline->pipeline_, "opusdec");
         GstElement* audioconvert = add_by_name(avpipeline->pipeline_, "audioconvert");
         GstElement* audioresample = add_by_name(avpipeline->pipeline_, "audioresample");
+        GstElement* presink_queue = add_by_name(avpipeline->pipeline_, "queue");
+        g_object_set(presink_queue, "max-size-buffers", 1, "max-size-bytes", 0, "max-size-time", (guint64)0, NULL);
         GstElement* autoaudiosink = add_by_name(avpipeline->pipeline_, "openslessink");
-        g_object_set(autoaudiosink, "buffer-time", 10000, /*"processing-deadline", (GstClockTime)1000000,*/ nullptr);
+        g_object_set(autoaudiosink, "buffer-time", 20000, "processing-deadline", (GstClockTime)1000000, nullptr);
 
-        if (!gst_element_link_many(queue, rtpopusdepay, opusdec, audioconvert, audioresample, autoaudiosink, nullptr))
+        if (!gst_element_link_many(queue, rtpopusdepay, opusdec, audioconvert, audioresample, presink_queue, autoaudiosink,
+                                   nullptr))
         {
             Debug::Log("Audio elements could not be linked.", Level::Error);
         }
@@ -289,11 +299,12 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
         }
         gst_object_unref(sinkpad);
 
+        gst_element_sync_state_with_parent(queue);
         gst_element_sync_state_with_parent(rtpopusdepay);
         gst_element_sync_state_with_parent(opusdec);
-        gst_element_sync_state_with_parent(queue);
         gst_element_sync_state_with_parent(audioconvert);
         gst_element_sync_state_with_parent(audioresample);
+        gst_element_sync_state_with_parent(presink_queue);
         gst_element_sync_state_with_parent(autoaudiosink);
     }
     g_free(pad_name);
@@ -305,6 +316,16 @@ GstAVPipelineOpenGLES::GstAVPipelineOpenGLES(IUnityInterfaces* s_UnityInterfaces
     if (!preloaded_plugins.back())
     {
         Debug::Log("Failed to load 'opengl' plugin", Level::Error);
+    }
+    preloaded_plugins.push_back(gst_plugin_load_by_name("opensles"));
+    if (!preloaded_plugins.back())
+    {
+        Debug::Log("Failed to load 'opensles' plugin", Level::Error);
+    }
+    preloaded_plugins.push_back(gst_plugin_load_by_name("amcvideodec-omx"));
+    if (!preloaded_plugins.back())
+    {
+        Debug::Log("Failed to load 'amcvideodec-omx' plugin", Level::Error);
     }
 }
 

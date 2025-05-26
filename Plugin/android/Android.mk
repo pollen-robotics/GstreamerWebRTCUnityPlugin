@@ -44,7 +44,8 @@ GSTREAMER_PLUGINS         := $(GSTREAMER_PLUGINS_CORE_CUSTOM) $(GSTREAMER_PLUGIN
                              $(GSTREAMER_PLUGINS_ENCODING) \
                              $(GSTREAMER_PLUGINS_SYS) \
                              $(GSTREAMER_PLUGINS_PLAYBACK) \
-                             $(GSTREAMER_PLUGINS_EFFECTS_CUSTOM)
+                             $(GSTREAMER_PLUGINS_EFFECTS_CUSTOM) \
+                             rstracers
 
 GSTREAMER_EXTRA_DEPS      := gstreamer-video-1.0 glib-2.0 gstreamer-sdp-1.0 gstreamer-webrtc-nice-1.0 gstreamer-app-1.0 gstreamer-gl-1.0
 

@@ -24,6 +24,6 @@ private:
 
     static GstElement* add_opusenc(GstElement* pipeline);
     static GstElement* add_audio_caps_capsfilter(GstElement* pipeline);
-    static GstElement* add_webrtcsink(GstElement* pipeline, const std::string& uri);
+    static GstElement* add_webrtcsink(GstElement* pipeline, const std::string& uri, GstElement* audiosrc);
     static GstElement* add_webrtcdsp(GstElement* pipeline);
 };

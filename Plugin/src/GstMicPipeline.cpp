@@ -26,7 +26,7 @@ void GstMicPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
     GstElement* queue = add_by_name(pipeline_, "queue");
     GstElement* opusenc = add_opusenc(pipeline_);
     GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(pipeline_);
-    GstElement* webrtcsink = add_webrtcsink(pipeline_, uri);
+    GstElement* webrtcsink = add_webrtcsink(pipeline_, uri, audiosrc);
 
     if (!gst_element_link_many(audiosrc, queue, audioconvert, audioresample, webrtcdsp, opusenc, audio_caps_capsfilter,
                                webrtcsink, nullptr))
@@ -100,7 +100,7 @@ GstElement* GstMicPipeline::add_audio_caps_capsfilter(GstElement* pipeline)
     return audio_caps_capsfilter;
 }
 
-GstElement* GstMicPipeline::add_webrtcsink(GstElement* pipeline, const std::string& uri)
+GstElement* GstMicPipeline::add_webrtcsink(GstElement* pipeline, const std::string& uri, GstElement* audiosrc)
 {
     GstElement* webrtcsink = gst_element_factory_make("webrtcsink", nullptr);
     if (!webrtcsink)
@@ -132,7 +132,7 @@ GstElement* GstMicPipeline::add_webrtcsink(GstElement* pipeline, const std::stri
 
     g_object_set(webrtcsink, "stun-server", nullptr, "do-retransmission", false, nullptr);
 
-    g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), nullptr);
+    g_signal_connect(webrtcsink, "consumer-added", G_CALLBACK(consumer_added_callback), audiosrc);
 
     gst_bin_add(GST_BIN(pipeline), webrtcsink);
     return webrtcsink;
@@ -157,6 +157,7 @@ GstElement* GstMicPipeline::add_webrtcdsp(GstElement* pipeline)
 void GstMicPipeline::consumer_added_callback(GstElement* consumer_id, gchararray webrtcbin, GstElement* arg1, gpointer udata)
 {
     Debug::Log("Consumer added");
+    GstElement* audiosrc = static_cast<GstElement*>(udata);
     GstIterator* sinks = gst_bin_iterate_sinks(GST_BIN(consumer_id));
     gboolean done = FALSE;
     while (!done)
@@ -180,6 +181,13 @@ void GstMicPipeline::consumer_added_callback(GstElement* consumer_id, gchararray
 
                 // Free the item value
                 g_value_unset(&item);
+
+                gint64 actual_buffer_time, actual_latency_time;
+
+                g_object_get(audiosrc, "actual-buffer-time", &actual_buffer_time, "actual-latency-time", &actual_latency_time,
+                             NULL);
+                Debug::Log("Actual buffer time: " + std::to_string(actual_buffer_time) + " ns", Level::Info);
+                Debug::Log("Actual latency time: " + std::to_string(actual_latency_time) + " ns", Level::Info);
 
                 break;
             }

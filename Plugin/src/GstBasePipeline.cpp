@@ -140,6 +140,7 @@ gboolean GstBasePipeline::dumpLatencyCallback(GstBasePipeline* self)
             std::string msg = "Pipeline " + self->PIPENAME + " latency: live=" + std::to_string(live) +
                               ", min=" + std::to_string(min_latency) + ", max=" + std::to_string(max_latency);
             Debug::Log(msg);
+            GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(self->pipeline_), GST_DEBUG_GRAPH_SHOW_ALL, self->PIPENAME.c_str());
         }
         gst_query_unref(query);
         return true;

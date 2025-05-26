@@ -2,6 +2,7 @@
  This source code is licensed under the license found in the
  LICENSE file in the root directory of this source tree. */
 
+#include "DebugLog.h"
 #include "GstDataPipeline.h"
 #include "GstMicPipeline.h"
 #include "Unity/IUnityGraphics.h"
@@ -37,6 +38,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id)
 {
+    Debug::Log("CreatePipeline", Level::Info);
     gstAVPipeline->CreatePipeline(uri, remote_peer_id);
     gstMicPipeline->CreatePipeline(uri, remote_peer_id);
 }
@@ -58,8 +60,10 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ReleaseTexture(void* 
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyPipeline()
 {
+    Debug::Log("DestroyPipeline", Level::Info);
     gstAVPipeline->DestroyPipeline();
     gstMicPipeline->DestroyPipeline();
+    gst_deinit();
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API DestroyDataPipeline() { gstDataPipeline->DestroyPipeline(); }
@@ -81,13 +85,13 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelServi
     gstDataPipeline->send_byte_array_channel_service(data, size);
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelReliableCommand(const unsigned char* data, size_t size)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelReliableCommand(const unsigned char* data,
+                                                                                           size_t size)
 {
     gstDataPipeline->send_byte_array_channel_command_reliable(data, size);
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelLossyCommand(const unsigned char* data,
-                                                                                           size_t size)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SendBytesChannelLossyCommand(const unsigned char* data, size_t size)
 {
     gstDataPipeline->send_byte_array_channel_command_lossy(data, size);
 }
@@ -99,10 +103,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 {
     // const char* internalStoragePath = getenv("EXTERNAL_STORAGE");
     // td::string logFilePath = std::string(internalStoragePath) + "/gstreamer.log";
-    /*setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer/gstreamer.log",
-           1);*/
-    setenv("GST_DEBUG_NO_COLOR", "1", 1);
-    setenv("GST_DEBUG", "2", 1);
+    // setenv("GST_DEBUG_FILE", "/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/gstreamer.log", 1);
+    // setenv("GST_DEBUG_NO_COLOR", "1", 1);
+    // setenv("GST_DEBUG", "4", 1);
     // gst_debug_set_threshold_for_name("basesink", GST_LEVEL_DEBUG);
 
 #if UNITY_WIN
