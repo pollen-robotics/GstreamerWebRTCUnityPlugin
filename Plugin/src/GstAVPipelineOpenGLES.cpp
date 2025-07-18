@@ -95,25 +95,33 @@ void GstAVPipelineOpenGLES::Draw(bool left)
 
     texture = *(guint*)v_frame.data[0];
     // Debug::Log("Sample buffer received in Draw " + std::to_string(texture));
-    copyGStreamerTextureToFramebuffer(texture, data->textureID, 960, 720);
+
+    if (data->fboRead == -1)
+    {
+        Debug::Log("Set frame buffers");
+        glGenFramebuffers(1, &data->fboRead);
+        glGenFramebuffers(1, &data->fboDraw);
+    }
+
+    copyGStreamerTextureToFramebuffer(texture, data->textureID, 960, 720, data->fboRead, data->fboDraw);
 
     gst_video_frame_unmap(&v_frame);
     gst_sample_unref(sample);
 }
 
-void GstAVPipelineOpenGLES::copyGStreamerTextureToFramebuffer(GLuint srcTexture, GLuint dstTexture, int width, int height)
+void GstAVPipelineOpenGLES::copyGStreamerTextureToFramebuffer(GLuint srcTexture, GLuint dstTexture, int width, int height,
+                                                              GLuint fboRead, GLuint fboDraw)
 {
-    GLuint fboRead = 0;
+    /*GLuint fboRead = 0;
     GLuint fboDraw = 0;
 
     glGenFramebuffers(1, &fboRead);
-    glGenFramebuffers(1, &fboDraw);
-
+    glGenFramebuffers(1, &fboDraw);*/
+    const GLenum attachment = GL_COLOR_ATTACHMENT0;
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fboRead);
     /*GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE)
         Debug::Log("Src FBO incomplete: 0x" + std::to_string(status), Level::Error);*/
-
     glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, srcTexture, 0);
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboDraw);
@@ -133,10 +141,12 @@ void GstAVPipelineOpenGLES::copyGStreamerTextureToFramebuffer(GLuint srcTexture,
     );
 
     // Clean up
+    glInvalidateFramebuffer(GL_READ_FRAMEBUFFER, 1, &attachment);
+    glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, &attachment);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glDeleteFramebuffers(1, &fboRead);
-    glDeleteFramebuffers(1, &fboDraw);
+    /*glDeleteFramebuffers(1, &fboRead);
+    glDeleteFramebuffers(1, &fboDraw);*/
 }
 
 void* GstAVPipelineOpenGLES::CreateTexture(bool left)
@@ -162,6 +172,8 @@ void GstAVPipelineOpenGLES::ReleaseTexture(void* texture)
         _leftData->last_sample = nullptr;
         gst_caps_unref(_leftData->last_caps);
         _leftData->last_caps = nullptr;
+        glDeleteFramebuffers(1, &_leftData->fboRead);
+        glDeleteFramebuffers(1, &_leftData->fboDraw);
     }
 
     _rightData->textureID = -1;
@@ -171,12 +183,14 @@ void GstAVPipelineOpenGLES::ReleaseTexture(void* texture)
         _rightData->last_sample = nullptr;
         gst_caps_unref(_rightData->last_caps);
         _rightData->last_caps = nullptr;
+        glDeleteFramebuffers(1, &_rightData->fboRead);
+        glDeleteFramebuffers(1, &_rightData->fboDraw);
     }
 }
 
-GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline)
+GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline, const std::string& suffix)
 {
-    GstElement* appsink = gst_element_factory_make("appsink", nullptr);
+    GstElement* appsink = gst_element_factory_make("appsink", ("appsink" + suffix).c_str());
     if (!appsink)
     {
         Debug::Log("Failed to create appsink", Level::Error);
@@ -184,7 +198,7 @@ GstElement* GstAVPipelineOpenGLES::add_appsink(GstElement* pipeline)
     }
 
     GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D");
-    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, "processing-deadline", (GstClockTime)10000000, nullptr);
+    g_object_set(appsink, "caps", caps, "drop", true, "max-buffers", 1, "processing-deadline", (GstClockTime)1000000, nullptr);
     gst_caps_unref(caps);
 
     gst_bin_add(GST_BIN(pipeline), appsink);
@@ -234,10 +248,9 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
     {
         Debug::Log("Adding video pad " + std::string(pad_name));
         //  decoder output texture-target=external-eos. converts to exture-target=2D
-        GstElement* glcolorconvert = add_by_name(avpipeline->pipeline_, "glcolorconvert");
-        GstElement* queue = add_by_name(avpipeline->pipeline_, "queue");
-        g_object_set(queue, "max-size-buffers", 1, "max-size-bytes", 0, "max-size-time", (guint64)0, NULL);
-        GstElement* appsink = add_appsink(avpipeline->pipeline_);
+        GstElement* glcolorconvert = nullptr;
+        GstElement* queue = nullptr;
+        GstElement* appsink = nullptr;
 
         GstAppSinkCallbacks callbacks = {nullptr};
         callbacks.new_sample = on_new_sample;
@@ -245,11 +258,19 @@ void GstAVPipelineOpenGLES::on_pad_added(GstElement* src, GstPad* new_pad, gpoin
         if (g_str_has_suffix(pad_name, "_0"))
         {
             Debug::Log("Connecting left video pad " + std::string(pad_name));
+            glcolorconvert = add_by_name(avpipeline->pipeline_, "glcolorconvert", "_left");
+            queue = add_by_name(avpipeline->pipeline_, "queue", "_left");
+            g_object_set(queue, "max-size-buffers", 1, "max-size-bytes", 0, "max-size-time", (guint64)0, nullptr);
+            appsink = add_appsink(avpipeline->pipeline_, "_left");
             gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, _leftData.get(), nullptr);
         }
         else if (g_str_has_suffix(pad_name, "_1"))
         {
             Debug::Log("Connecting right video pad " + std::string(pad_name));
+            glcolorconvert = add_by_name(avpipeline->pipeline_, "glcolorconvert", "_right");
+            queue = add_by_name(avpipeline->pipeline_, "queue", "_right");
+            g_object_set(queue, "max-size-buffers", 1, "max-size-bytes", 0, "max-size-time", (guint64)0, nullptr);
+            appsink = add_appsink(avpipeline->pipeline_, "_right");
             gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, _rightData.get(), nullptr);
         }
         else

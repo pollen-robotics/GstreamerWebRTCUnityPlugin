@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export GSTREAMER_ROOT_ANDROID=/mnt/data/fabien/android/gstreamer-1.0-android-universal-1.24.9/
+export GSTREAMER_ROOT_ANDROID=/mnt/data/fabien/android/gstreamer-1.0-android-universal-1.26.0/
 #export ANDROID_NDK_ROOT=/mnt/data/fabien/android/Sdk/ndk/29.0.13113456
 export ANDROID_NDK_ROOT=/mnt/data/fabien/unity/2022.3.61f1/Editor/Data/PlaybackEngines/AndroidPlayer/NDK
 

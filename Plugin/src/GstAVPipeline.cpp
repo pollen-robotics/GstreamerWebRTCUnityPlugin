@@ -39,7 +39,8 @@ GstElement* GstAVPipeline::add_webrtcsrc(GstElement* pipeline, const std::string
 void GstAVPipeline::webrtcbin_ready(GstElement* self, gchararray peer_id, GstElement* webrtcbin, gpointer udata)
 {
     Debug::Log("Configure webrtcbin", Level::Info);
-    g_object_set(webrtcbin, "latency", 10, nullptr);
+    auto pipeline = (GstAVPipeline*)udata;
+    g_object_set(webrtcbin, "latency", pipeline->_latency, nullptr);
 }
 
 GstAVPipeline::GstAVPipeline(IUnityInterfaces* s_UnityInterfaces)
@@ -87,11 +88,13 @@ GstAVPipeline::~GstAVPipeline()
     preloaded_plugins.clear();
 }
 
-void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
+void GstAVPipeline::CreatePipeline(const char* uri, const char* remote_peer_id, int latency)
 {
     Debug::Log("GstAVPipeline create pipeline", Level::Info);
     Debug::Log(uri, Level::Info);
     Debug::Log(remote_peer_id, Level::Info);
+
+    _latency = latency;
 
     GstBasePipeline::CreatePipeline();
 

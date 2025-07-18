@@ -12,12 +12,13 @@ class GstAVPipeline : public GstBasePipeline
 protected:
     std::vector<GstPlugin*> preloaded_plugins;
     IUnityInterfaces* _s_UnityInterfaces = nullptr;
+    int _latency = 100; // Default latency in milliseconds
 
 public:
     GstAVPipeline(IUnityInterfaces* s_UnityInterfaces);
     ~GstAVPipeline();
 
-    void CreatePipeline(const char* uri, const char* remote_peer_id);
+    void CreatePipeline(const char* uri, const char* remote_peer_id, int latency);
     virtual void ReleaseTexture(void* texture) = 0;
     virtual void Draw(bool left) = 0;
 

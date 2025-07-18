@@ -28,6 +28,8 @@ private:
     struct AppData
     {
         GLuint textureID = -1;
+        GLuint fboRead = -1;
+        GLuint fboDraw = -1;
         GstCaps* last_caps = nullptr;
         GstSample* last_sample = nullptr;
         std::mutex lock;
@@ -38,7 +40,8 @@ private:
 private:
     void on_pad_added(GstElement* src, GstPad* new_pad, gpointer data) override;
     GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data) override;
-    GstElement* add_appsink(GstElement* pipeline);
+    GstElement* add_appsink(GstElement* pipeline, const std::string& suffix);
     static GstFlowReturn on_new_sample(GstAppSink* appsink, gpointer user_data);
-    void copyGStreamerTextureToFramebuffer(GLuint sourceTexture, GLuint destinationTexture, GLsizei width, GLsizei height);
+    void copyGStreamerTextureToFramebuffer(GLuint sourceTexture, GLuint destinationTexture, GLsizei width, GLsizei height,
+                                           GLuint fboRead, GLuint fboDraw);
 };

@@ -21,9 +21,9 @@ void GstMicPipeline::CreatePipeline(const char* uri, const char* remote_peer_id)
     GstElement* audiosrc = add_openslessrc(pipeline_);
 #endif
     GstElement* webrtcdsp = add_webrtcdsp(pipeline_);
-    GstElement* audioconvert = add_by_name(pipeline_, "audioconvert");
-    GstElement* audioresample = add_by_name(pipeline_, "audioresample");
-    GstElement* queue = add_by_name(pipeline_, "queue");
+    GstElement* audioconvert = add_by_name(pipeline_, "audioconvert", "_mic");
+    GstElement* audioresample = add_by_name(pipeline_, "audioresample", "_mic");
+    GstElement* queue = add_by_name(pipeline_, "queue", "_mic");
     GstElement* opusenc = add_opusenc(pipeline_);
     GstElement* audio_caps_capsfilter = add_audio_caps_capsfilter(pipeline_);
     GstElement* webrtcsink = add_webrtcsink(pipeline_, uri, audiosrc);
@@ -69,7 +69,7 @@ GstElement* GstMicPipeline::add_openslessrc(GstElement* pipeline)
 
 GstElement* GstMicPipeline::add_opusenc(GstElement* pipeline)
 {
-    GstElement* opusenc = gst_element_factory_make("opusenc", nullptr);
+    GstElement* opusenc = gst_element_factory_make("opusenc", "opusenc_mic");
     if (!opusenc)
     {
         Debug::Log("Failed to create opusenc", Level::Error);
@@ -84,7 +84,7 @@ GstElement* GstMicPipeline::add_opusenc(GstElement* pipeline)
 
 GstElement* GstMicPipeline::add_audio_caps_capsfilter(GstElement* pipeline)
 {
-    GstElement* audio_caps_capsfilter = gst_element_factory_make("capsfilter", nullptr);
+    GstElement* audio_caps_capsfilter = gst_element_factory_make("capsfilter", "capsfilter_mic");
     if (!audio_caps_capsfilter)
     {
         Debug::Log("Failed to create capsfilter", Level::Error);
@@ -102,7 +102,7 @@ GstElement* GstMicPipeline::add_audio_caps_capsfilter(GstElement* pipeline)
 
 GstElement* GstMicPipeline::add_webrtcsink(GstElement* pipeline, const std::string& uri, GstElement* audiosrc)
 {
-    GstElement* webrtcsink = gst_element_factory_make("webrtcsink", nullptr);
+    GstElement* webrtcsink = gst_element_factory_make("webrtcsink", "webrtcsink_mic");
     if (!webrtcsink)
     {
         Debug::Log("Failed to create webrtcsink", Level::Error);
@@ -140,7 +140,7 @@ GstElement* GstMicPipeline::add_webrtcsink(GstElement* pipeline, const std::stri
 
 GstElement* GstMicPipeline::add_webrtcdsp(GstElement* pipeline)
 {
-    GstElement* webrtcdsp = gst_element_factory_make("webrtcdsp", nullptr);
+    GstElement* webrtcdsp = gst_element_factory_make("webrtcdsp", "webrtcdsp_mic");
     if (!webrtcdsp)
     {
         Debug::Log("Failed to create webrtcdsp", Level::Error);

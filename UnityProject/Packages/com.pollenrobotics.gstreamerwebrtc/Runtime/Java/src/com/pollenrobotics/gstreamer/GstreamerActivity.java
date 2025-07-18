@@ -42,7 +42,7 @@ public class GstreamerActivity extends UnityPlayerActivity {
                 //"/sdcard/Android/data/com.DefaultCompany.UnityProject/files/gstreamer/gstreamer.log",
                 true
             );*/
-            Os.setenv(
+            /*Os.setenv(
                 "GST_DEBUG_DUMP_DOT_DIR",
                 path + "/log_dot",
                 true
@@ -54,7 +54,7 @@ public class GstreamerActivity extends UnityPlayerActivity {
                 //"/storage/emulated/0/Android/data/com.DefaultCompany.UnityProject/files/buffer_lateness.log",
                 //"/sdcard/Android/data/com.DefaultCompany.UnityProject/files/gstreamer/gstreamer.log",
                 true
-            );  
+            );  */
             Os.setenv("GST_DEBUG_NO_COLOR", "1", true);
             Os.setenv("GST_DEBUG", "3", true);
         } catch (ErrnoException ex) {

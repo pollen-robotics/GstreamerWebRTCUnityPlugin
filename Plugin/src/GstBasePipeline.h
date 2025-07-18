@@ -27,7 +27,7 @@ protected:
     virtual GstBusSyncReply busSyncHandler(GstBus* bus, GstMessage* msg, gpointer user_data);
     static gboolean busHandler(GstBus* bus, GstMessage* msg, gpointer data);
     static gboolean dumpLatencyCallback(GstBasePipeline* self);
-    static GstElement* add_by_name(GstElement* pipeline, const std::string& name);
+    static GstElement* add_by_name(GstElement* pipeline, const std::string& name, const std::string& suffix = "");
 
     void CreateBusThread();
 };

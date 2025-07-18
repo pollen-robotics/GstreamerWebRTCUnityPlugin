@@ -50,18 +50,18 @@ private:
     static const std::string CHANNEL_REACHY_COMMAND_RELIABLE;
     static const std::string CHANNEL_REACHY_COMMAND_LOSSY;
     static const std::string CHANNEL_REACHY_AUDIT;
-    GstWebRTCDataChannel* channel_service_ = nullptr;    
+    GstWebRTCDataChannel* channel_service_ = nullptr;
     GstWebRTCDataChannel* channel_command_reliable_ = nullptr;
     GstWebRTCDataChannel* channel_command_lossy_ = nullptr;
     GstWebRTCDataChannel* channel_audit_ = nullptr;
 
 public:
     GstDataPipeline();
-    void CreatePipeline();
+    void CreatePipeline() override;
     void DestroyPipeline() override;
     void SetOffer(const char* sdp_offer);
     void SetICECandidate(const char* candidate, int mline_index);
-    void send_byte_array_channel_service(const unsigned char * data, size_t size);
+    void send_byte_array_channel_service(const unsigned char* data, size_t size);
     void send_byte_array_channel_command_reliable(const unsigned char* data, size_t size);
     void send_byte_array_channel_command_lossy(const unsigned char* data, size_t size);
 
@@ -69,7 +69,7 @@ private:
     GstElement* add_webrtcbin();
     static void on_ice_candidate(GstElement* webrtcbin, guint mline_index, gchararray candidate, gpointer user_data);
     static void on_data_channel(GstElement* webrtcbin, GstWebRTCDataChannel* channel, gpointer udata);
-    //static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
+    // static void on_message_data(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_service(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_state(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);
     static void on_message_data_audit(GstWebRTCDataChannel* channel, GBytes* data, gpointer user_data);

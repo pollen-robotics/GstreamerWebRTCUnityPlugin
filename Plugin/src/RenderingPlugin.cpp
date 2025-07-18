@@ -36,10 +36,11 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreateDevice()
 #endif
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API CreatePipeline(const char* uri, const char* remote_peer_id,
+                                                                          int latency)
 {
     Debug::Log("CreatePipeline", Level::Info);
-    gstAVPipeline->CreatePipeline(uri, remote_peer_id);
+    gstAVPipeline->CreatePipeline(uri, remote_peer_id, latency);
     gstMicPipeline->CreatePipeline(uri, remote_peer_id);
 }
 

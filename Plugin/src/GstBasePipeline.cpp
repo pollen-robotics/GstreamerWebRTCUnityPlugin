@@ -159,9 +159,19 @@ void GstBasePipeline::CreateBusThread()
 }
 
 // generic method to add element with default options
-GstElement* GstBasePipeline::add_by_name(GstElement* pipeline, const std::string& name)
+GstElement* GstBasePipeline::add_by_name(GstElement* pipeline, const std::string& name, const std::string& suffix)
 {
-    GstElement* element = gst_element_factory_make(name.c_str(), nullptr);
+    GstElement* element = nullptr;
+    if (suffix == "")
+    {
+        element = gst_element_factory_make(name.c_str(), nullptr);
+    }
+    else
+    {
+        Debug::Log("Using name: " + name + suffix, Level::Info);
+        element = gst_element_factory_make(name.c_str(), (name + suffix).c_str());
+    }
+    // GstElement* element = gst_element_factory_make(name.c_str(), nullptr);
     if (!element)
     {
         Debug::Log("Failed to create " + name, Level::Error);
